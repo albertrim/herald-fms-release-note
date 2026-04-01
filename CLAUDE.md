@@ -4,36 +4,144 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-JIRA Release Note 기반 비개발자용 업데이트 공지 자동 생성 서비스. JIRA Release Note URL을 입력하면 연결된 티켓을 분석하여 비개발자가 이해할 수 있는 업데이트 공지 초안을 자동 생성하고, 편집 후 이메일로 발송할 수 있는 웹 애플리케이션.
+JIRA Release Note 기반 비개발자용 업데이트 공지 자동 생성 서비스 (FASSTO Herald). JIRA Release Note URL을 입력하면 연결된 티켓을 분석하여 비개발자가 이해할 수 있는 업데이트 공지 초안을 자동 생성하고, 편집 후 이메일로 발송할 수 있는 웹 애플리케이션.
 
 ## Project Status
 
-기획 단계 (2026-04-01 기준). 기능명세서와 유저플로우 문서만 존재하며 코드베이스는 아직 생성되지 않음.
+구현 완료 (2026-04-01 기준). 7개 화면 + 8개 API 엔드포인트 구현됨.
+
+## Tech Stack
+
+- **Language**: TypeScript 5.x
+- **Framework**: Next.js 16 (App Router), React 19
+- **Database**: SQLite (Prisma 5, prisma/data.db)
+- **Auth**: Auth.js v5 (next-auth@beta) + Credentials provider
+- **AI**: Vercel AI SDK 6 + @ai-sdk/anthropic
+- **Email**: Nodemailer + Gmail SMTP
+- **UI**: Tailwind CSS 4 + lucide-react (아이콘) + @dnd-kit (드래그앤드롭)
+- **File Upload**: 로컬 파일 저장 (public/uploads/)
+- **Testing**: Vitest (unit) + Playwright (E2E)
+- **Package Manager**: pnpm
+
+## Commands
+
+```bash
+pnpm dev          # 개발 서버 (포트 3100)
+pnpm build        # 프로덕션 빌드
+pnpm lint         # ESLint
+pnpm typecheck    # TypeScript 타입 체크
+pnpm test         # Vitest 단위 테스트
+pnpm test:e2e     # Playwright E2E 테스트
+```
+
+## Figma Design Reference
+
+- **Figma Make fileKey**: `hyat4Po1xsu1rZGUQWSSLq`
+- **서비스명**: FASSTO Herald
+- **브랜딩**: blue-purple 그라데이션 테마
+
+## Design System (MANDATORY)
+
+이 섹션은 모든 UI 구현에서 반드시 준수해야 합니다. 새로운 화면이나 컴포넌트를 만들 때 이 규칙을 따르세요.
+
+### Figma 1:1 구현 원칙
+
+- 새로운 화면 구현 시 반드시 Figma MCP `get_design_context`로 디자인을 가져와 1:1로 구현한다
+- Figma 디자인의 레이아웃, 간격, 색상, 타이포그래피, 아이콘을 충실히 재현한다
+- shadcn/ui 컴포넌트보다 Figma 디자인 코드의 스타일링을 우선한다
+- Figma 디자인이 없는 화면은 아래 디자인 토큰과 패턴을 따른다
+
+### Brand Identity
+
+- **서비스명**: FASSTO Herald
+- **서브타이틀**: Release Note Manager
+- **로고**: blue-purple 그라데이션 배경(rounded-xl) + 커스텀 SVG 아이콘
+- **슬로건**: "JIRA 릴리즈를 간편한 업데이트 공지로"
+
+### Color Palette
+
+```
+Primary Gradient:  from-blue-600 to-purple-600 (버튼, CTA, 헤더 강조)
+Background:        from-slate-50 via-blue-50/30 to-purple-50/30 (메인 페이지)
+Auth Background:   from-blue-50 via-white to-purple-50 (로그인/회원가입)
+Card:              bg-white/80 backdrop-blur-sm (Glassmorphism)
+Input Background:  bg-gray-50/80 (입력 필드)
+```
+
+### Category Colors
+
+| 카테고리 | Dot | Badge Gradient | Hover |
+|---------|-----|----------------|-------|
+| 기능 개선 | bg-blue-500 | from-blue-100 to-blue-200 text-blue-700 | hover:bg-blue-50/50 |
+| 버그 수정 | bg-red-500 | from-red-100 to-red-200 text-red-700 | hover:bg-red-50/50 |
+| 신규 기능 | bg-purple-500 | from-purple-100 to-purple-200 text-purple-700 | hover:bg-purple-50/50 |
+| 기타 | bg-gray-400 | from-gray-100 to-gray-200 text-gray-700 | hover:bg-gray-50/50 |
+
+### Status Colors
+
+| 상태 | Badge |
+|------|-------|
+| 발송 성공 | bg-green-50 text-green-700 + CheckCircle icon |
+| 발송 실패 | bg-red-50 text-red-700 + XCircle icon |
+
+### Typography
+
+- **페이지 제목**: text-3xl font-bold text-gray-900
+- **섹션 제목**: text-2xl font-bold text-gray-900
+- **카드 제목**: text-xl font-semibold text-gray-900
+- **본문**: text-sm text-gray-600, leading-relaxed
+- **라벨**: text-sm font-medium text-gray-700
+- **보조 텍스트**: text-xs text-gray-500
+- **폰트**: Pretendard (한글), system-ui fallback
+
+### Layout Patterns
+
+- **메인 컨테이너**: max-w-7xl mx-auto px-6 py-8
+- **폼 컨테이너**: max-w-2xl 또는 max-w-3xl
+- **헤더**: sticky top-0 z-50, bg-white/80 backdrop-blur-md, border-b border-gray-200/60
+- **카드**: rounded-2xl 또는 rounded-3xl, border border-white/60, shadow-xl backdrop-blur-sm
+- **CTA 카드**: rounded-3xl, gradient background, shadow-2xl, overflow-hidden + 장식 요소
+
+### Component Patterns
+
+- **버튼 (Primary)**: bg-gradient-to-r from-blue-600 to-purple-600, rounded-lg/2xl, shadow-lg, hover:scale-[1.02]
+- **버튼 (Secondary)**: bg-white border-gray-200, rounded-xl/2xl, hover:bg-gray-50
+- **입력 필드**: 좌측 아이콘(lucide-react) + pl-10, py-3, rounded-lg, border-gray-300, focus:ring-2 focus:ring-blue-500
+- **오류 메시지**: bg-red-50 border-red-200 rounded-lg + AlertCircle icon
+- **수신자 태그**: gradient pill (from-blue-500 to-purple-500 text-white rounded-full) + X 삭제
+- **드래그 핸들**: GripVertical icon, cursor-grab
+- **선택 카드**: border-2, selected: border-blue-500, default: border-gray-200
+
+### Icons (lucide-react)
+
+항상 lucide-react에서 아이콘을 가져옵니다:
+- **인증**: Mail, Lock, User, CheckCircle, AlertCircle
+- **네비게이션**: ArrowLeft, LogOut, Plus
+- **편집**: Edit2, Trash2, GripVertical, Merge, Image as ImageIcon, ChevronDown
+- **발송**: Send, Sparkles, X, Loader2
+- **이력**: Calendar, Users, CheckCircle, XCircle, FileText
+
+### Glassmorphism Pattern
+
+```
+bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/60
+```
+
+### Gradient Header (미리보기/이력 상세)
+
+```
+bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6
+```
 
 ## Specification Documents
 
-- `JIRA Release Note 기반 비개발자용 업데이트 공지 자동 생성 서비스_기능명세서_2026-04-01.md` - 전체 기능명세서 (5개 주요 기능, 수용 기준 포함)
-- `JIRA Release Note 기반 비개발자용 업데이트 공지 자동 생성 서비스_유저플로우_2026-04-01.md.md` - Mermaid 기반 유저플로우 다이어그램
-
-## Core Features (Priority Order)
-
-1. **JIRA 연동 및 자동 생성** (높음) - JIRA Release Note URL → 티켓 분석 → 비개발자 친화적 초안 생성, Slack 링크 자동 포함
-2. **초안 편집** (높음) - 항목 삭제/병합/수정, 드래그앤드롭 순서 변경, 스크린샷 첨부(항목당 최대 5개)
-3. **이메일 발송 및 관리** (높음) - 이메일 발송, 발송 이력 관리, 재발송
-4. **사용자 인증** (중간) - 회원가입/로그인, 역할 기반 접근 제어 (관리자/일반 사용자)
-5. **JIRA URL 입력 관리** (중간) - 기본 2개 필드, 동적 추가/삭제, URL 유효성 검증
-
-## User Flow
-
-인증 → 대시보드(발송이력/공지생성) → URL 입력 → 초안 자동 생성 → 초안 편집(삭제/병합/수정/순서변경/스크린샷) → 이메일 발송(수신자 설정/미리보기) → 발송 완료
-
-## Target Users
-
-물류운영팀, 영업팀, 고객만족팀 등 비개발 직군. IT 시스템 변경사항을 이해하고 전달해야 하는 사용자.
+- `feature-spec.md` - 전체 기능명세서 (5개 주요 기능, 수용 기준 포함)
+- `user-flow.md` - Mermaid 기반 유저플로우 다이어그램
+- `specs/001-jira-release-note-service/` - 상세 스펙, 플랜, 태스크
 
 ## Key Integration Points
 
-- **JIRA API**: Release Note 및 연결 티켓 조회
-- **AI/LLM**: 기술 용어를 비개발자 관점으로 변환
-- **이메일 서비스**: 공지 발송
-- **Slack**: 티켓 내 Slack 링크 자동 추출
+- **JIRA API**: Atlassian Cloud REST API v3, `/rest/api/3/search/jql` + `/rest/api/3/version/{id}`
+- **AI/LLM**: Vercel AI SDK + Anthropic Claude (기술 용어 → 비개발자 관점 변환)
+- **Email**: Nodemailer + Gmail SMTP (HTML 이메일 발송)
+- **Slack**: 티켓 내 Slack 링크 자동 추출 (best-effort)
