@@ -18,6 +18,7 @@ dist/
 .DS_Store
 *.pem
 Thumbs.db
+TODO.md
 
 # debug
 npm-debug.log*
