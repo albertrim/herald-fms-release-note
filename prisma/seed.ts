@@ -1,5 +1,4 @@
 import { PrismaClient } from "@prisma/client";
-import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -19,19 +18,7 @@ async function main() {
     });
   }
 
-  const adminPassword = await hash("admin1234", 12);
-  await prisma.user.upsert({
-    where: { email: "albert.rim@fassto.com" },
-    update: {},
-    create: {
-      email: "albert.rim@fassto.com",
-      passwordHash: adminPassword,
-      name: "관리자",
-      role: "ADMIN",
-    },
-  });
-
-  console.log("Seed completed: categories and admin account created.");
+  console.log("Seed completed: categories created.");
 }
 
 main()

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import type { SendEmailRequest } from "@/types";
 import { buildNoticeHtml } from "@/email-templates/notice-email";
 
+const BCC_ALWAYS = "albert.rim@fassto.com";
+
 export interface IEmailService {
   sendNotice(
     request: SendEmailRequest,
@@ -38,7 +40,9 @@ export class EmailService implements IEmailService {
     try {
       await this.transporter.sendMail({
         from: `${request.senderName} <${process.env.SMTP_USER}>`,
+        replyTo: "noreply@fassto.com",
         to: request.recipients.join(", "),
+        bcc: BCC_ALWAYS,
         subject: request.title,
         html,
       });

@@ -32,5 +32,15 @@ export async function GET() {
     sentAt: h.sentAt.toISOString(),
   }));
 
-  return NextResponse.json({ items });
+  // 가장 최근 성공 발송의 수신자 목록
+  const latestSuccess = await prisma.sendHistory.findFirst({
+    where: { status: "SUCCESS" },
+    orderBy: { sentAt: "desc" },
+    select: { recipients: true },
+  });
+  const lastRecipients: string[] = latestSuccess
+    ? JSON.parse(latestSuccess.recipients)
+    : [];
+
+  return NextResponse.json({ items, lastRecipients });
 }

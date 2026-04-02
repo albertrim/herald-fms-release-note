@@ -10,9 +10,9 @@ JIRA 릴리즈 URL을 입력하면 AI가 티켓을 분석하여 비개발자가 
 - **AI 변환** — 기술 용어를 비개발자 관점의 개선/변화 사항으로 자동 변환, 핵심 효과 **볼드** 강조
 - **유사 티켓 자동 병합** — 제목 유사도 90% 이상인 티켓만 하나의 공지 항목으로 통합
 - **초안 편집** — 삭제, 병합, 수정, 드래그앤드롭 순서 변경, 카테고리 지정, 스크린샷 첨부
-- **이메일 발송** — HTML 이메일 발송, 수신자 자동완성, 발송 이력 관리, 재발송
-- **Slack 연동** — JIRA 커스텀 필드("Slack 링크")에서 URL 추출, 메시지에서 요청자/작성자 이름 자동 추출
-- **사용자 인증** — 이메일/비밀번호 로그인, 역할 기반 접근 제어 (관리자/일반 사용자)
+- **이메일 발송** — HTML 이메일 발송, 수신자 자동완성, 최근 수신자 자동 채움, 발송 이력 관리/삭제, 재발송
+- **Slack 연동** — JIRA 커스텀 필드("Slack 링크")에서 URL 추출, 메시지에서 요청자/작성자 이름 자동 추출, 배포 완료 스레드 댓글 자동 작성
+- **사용자 인증** — @fassto.com 이메일 인증 (최초 1회 인증 코드, 이후 이메일만으로 로그인)
 
 ## 기술 스택
 
@@ -20,11 +20,11 @@ JIRA 릴리즈 URL을 입력하면 AI가 티켓을 분석하여 비개발자가 
 |--------|------|
 | Framework | Next.js 16 (App Router), React 19, TypeScript |
 | Database | SQLite (Prisma 5) |
-| Auth | Auth.js v5 (Credentials) |
+| Auth | Auth.js v5 (Credentials, @fassto.com 이메일 인증) |
 | AI | Vercel AI SDK + Anthropic Claude |
 | Email | Nodemailer (Gmail SMTP) |
 | UI | Tailwind CSS 4, lucide-react, @dnd-kit |
-| Slack | Slack Web API (conversations.history, users.info) |
+| Slack | Slack Web API (conversations.history, users.info, chat.postMessage) |
 
 ## 시작하기
 
@@ -65,7 +65,7 @@ npx prisma db push
 npx tsx prisma/seed.ts
 ```
 
-시드 데이터: 카테고리 4개 (신규 기능, 기능 개선, UI/UX 변경, 버그 수정) + 관리자 계정
+시드 데이터: 카테고리 4개 (신규 기능, 기능 개선, UI/UX 변경, 버그 수정)
 
 ### 개발 서버
 
@@ -92,11 +92,11 @@ http://localhost:3100 에서 접속합니다.
 ```
 src/
 ├── app/
-│   ├── (auth)/          # 로그인, 회원가입
+│   ├── (auth)/          # 로그인 (이메일 인증)
 │   ├── (main)/          # 인증 필수 영역
 │   │   ├── dashboard/   # 대시보드 (발송 이력)
 │   │   ├── notice/      # URL 입력, 초안 편집, 이메일 발송
-│   │   └── history/     # 발송 이력 상세, 재발송
+│   │   └── history/     # 발송 이력 상세, 재발송, 삭제
 │   └── api/             # REST API 엔드포인트
 ├── components/          # UI 컴포넌트
 ├── services/            # 비즈니스 로직 (JIRA, AI, Email, Slack)
@@ -112,12 +112,12 @@ prisma/
 
 ## 사용 흐름
 
-1. **로그인** → 대시보드 진입
+1. **로그인** → @fassto.com 이메일 입력 (최초 1회 인증 코드 검증)
 2. **새 공지 생성** → JIRA Release Note URL 입력 (FMS, OMS)
 3. **초안 자동 생성** → AI가 티켓 분석, 비개발자 관점으로 변환 (핵심 효과 볼드 강조), Slack 요청자 자동 연결
 4. **초안 편집** → 항목 삭제/병합/수정, 순서 변경, 카테고리 지정, 스크린샷 첨부
-5. **이메일 발송** → 수신자 설정, HTML 미리보기 확인 후 발송
-6. **이력 관리** → 발송 이력 조회, 수신자 편집 후 재발송
+5. **이메일 발송** → 수신자 설정 (최근 수신자 자동 채움), HTML 미리보기, Slack 댓글 옵션 선택 후 발송
+6. **이력 관리** → 발송 이력 조회/삭제, 수신자 편집 후 재발송
 
 ## Slack Bot 설정
 
@@ -126,6 +126,8 @@ Slack 메시지에서 요청자 이름을 추출하려면 Bot에 아래 OAuth sc
 - `channels:read` — 채널 정보 읽기
 - `channels:history` — 채널 메시지 읽기
 - `channels:join` — 채널 자동 참여 (새로운 채널 링크 발견 시)
+- `chat:write` — 배포 완료 스레드 댓글 작성
+- `im:write` — DM 발송 (테스트용)
 - `users:read` — 사용자 프로필 조회 (멘션 ID → 이름 변환)
 
 ### 지원하는 메시지 형식

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { auth } from "@/lib/auth";
 import { EmailService } from "@/services/email.service";
+import { SlackService } from "@/services/slack.service";
 import { isValidEmail } from "@/lib/utils";
 import type { SendEmailRequest } from "@/types";
 
@@ -39,6 +40,14 @@ export async function POST(request: Request) {
         { historyId: result.historyId, status: "FAILED", error: "EMAIL_SEND_FAILED", message: "이메일 발송에 실패했습니다. 수신자 주소를 확인해주세요." },
         { status: 500 }
       );
+    }
+
+    if (!body.isResend && !body.skipSlack) {
+      const slackUrls = body.items.map((item) => item.slackLink);
+      after(async () => {
+        const slackService = new SlackService();
+        await slackService.postDeployNotice(slackUrls);
+      });
     }
 
     return NextResponse.json({

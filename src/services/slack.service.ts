@@ -16,9 +16,6 @@ export class SlackService {
 
   constructor() {
     this.token = process.env.SLACK_BOT_TOKEN || "";
-    if (this.token) {
-      console.log(`[Slack API] Token loaded: ${this.token.slice(0, 20)}...${this.token.slice(-4)}`);
-    }
   }
 
   async getRequesterFromMessage(slackUrl: string): Promise<SlackMessageResult> {
@@ -140,6 +137,53 @@ export class SlackService {
       || data.user.profile?.display_name
       || data.user.name
       || null;
+  }
+
+  async postDeployNotice(slackUrls: (string | null)[]): Promise<void> {
+    if (!this.token) return;
+
+    const { formatKoreanDate } = await import("@/lib/utils");
+    const message = [
+      `:rocket: *운영 배포 완료 안내*`,
+      ``,
+      `안녕하세요! 요청 사항이 *${formatKoreanDate()}* 운영 환경에 배포 완료되었습니다.`,
+      `자세한 내용은 :email: 업데이트 공지 메일을 확인해주시기 바랍니다.`,
+      ``,
+      `감사합니다 :pray:`,
+    ].join("\n");
+
+    const uniqueUrls = [...new Set(slackUrls.filter((u): u is string => !!u))];
+
+    await Promise.all(
+      uniqueUrls.map(async (url) => {
+        const parsed = this.parseSlackUrl(url);
+        if (!parsed) return;
+
+        try {
+          const res = await fetch("https://slack.com/api/chat.postMessage", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${this.token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              channel: parsed.channelId,
+              thread_ts: parsed.timestamp,
+              text: message,
+            }),
+            cache: "no-store" as RequestCache,
+          });
+          const data = await res.json();
+          if (data.ok) {
+            console.log(`[Slack API] Posted deploy notice to ${url}`);
+          } else {
+            console.error(`[Slack API] Failed to post notice: ${data.error}`);
+          }
+        } catch (error) {
+          console.error(`[Slack API] Error posting notice to ${url}:`, error);
+        }
+      })
+    );
   }
 
   private cleanName(raw: string): string {

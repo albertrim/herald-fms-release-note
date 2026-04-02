@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Send, Sparkles, X, Loader2, CheckCircle } from "lucide-react";
-import { isValidEmail, renderBoldMarkdown } from "@/lib/utils";
+import { isValidEmail, renderBoldMarkdown, formatKoreanDate } from "@/lib/utils";
 import { getCategoryStyle, EMAIL_GREETING, EMAIL_GREETING_SUB } from "@/lib/category-styles";
 import type {
   DraftNotice,
@@ -17,12 +17,12 @@ export default function SendPage() {
   const router = useRouter();
   const [draft, setDraft] = useState<DraftNotice | null>(null);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const today = new Date();
-  const defaultTitle = `[공지] ${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일, FMS 업데이트 안내`;
+  const defaultTitle = `[공지] ${formatKoreanDate()}, FMS 업데이트 안내`;
   const [title, setTitle] = useState(defaultTitle);
   const senderName = "IT개발본부";
   const [recipients, setRecipients] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sendSlackNotice, setSendSlackNotice] = useState(true);
 
   const [recipientQuery, setRecipientQuery] = useState("");
   const [suggestions, setSuggestions] = useState<RecipientSuggestion[]>([]);
@@ -37,6 +37,9 @@ export default function SendPage() {
 
   useEffect(() => {
     fetch("/api/categories").then((r) => r.json()).then((d) => setCategories(d.categories || []));
+    fetch("/api/history").then((r) => r.json()).then((d) => {
+      if (d.lastRecipients?.length > 0) setRecipients(d.lastRecipients);
+    });
   }, []);
 
   useEffect(() => {
@@ -102,6 +105,7 @@ export default function SendPage() {
       title, senderName, recipients: finalRecipients,
       items: draft.items.map((item) => ({ title: item.title, description: item.description, categoryName: getCategoryName(item.categoryId), screenshots: item.screenshots, slackLink: item.slackLink, slackAuthor: item.slackAuthor })),
       sourceUrls: draft.sourceUrls,
+      skipSlack: !sendSlackNotice,
     };
     try {
       const res = await fetch("/api/email/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -231,6 +235,26 @@ export default function SendPage() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Slack notice option */}
+          <div className="rounded-3xl border border-white/60 bg-white/80 p-8 shadow-xl backdrop-blur-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <svg className="h-5 w-5 text-purple-600" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.124 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.52 2.521h-2.522V8.834zm-1.271 0a2.528 2.528 0 0 1-2.521 2.521 2.528 2.528 0 0 1-2.521-2.521V2.522A2.528 2.528 0 0 1 15.166 0a2.528 2.528 0 0 1 2.521 2.522v6.312zm-2.521 10.124a2.528 2.528 0 0 1 2.521 2.522A2.528 2.528 0 0 1 15.166 24a2.528 2.528 0 0 1-2.521-2.52v-2.522h2.521zm0-1.271a2.528 2.528 0 0 1-2.521-2.521 2.528 2.528 0 0 1 2.521-2.521h6.312A2.528 2.528 0 0 1 24 15.165a2.528 2.528 0 0 1-2.52 2.522h-6.313z"/></svg>
+              <h3 className="text-xl font-semibold text-gray-900">Slack 연동</h3>
+            </div>
+            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3.5 transition-colors hover:bg-gray-100/80">
+              <input
+                type="checkbox"
+                checked={sendSlackNotice}
+                onChange={(e) => setSendSlackNotice(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-700">Slack 스레드에 배포 알림 댓글 발송</span>
+                <p className="mt-0.5 text-xs text-gray-400">각 JIRA 티켓의 Slack 글에 배포 완료 댓글을 남깁니다</p>
+              </div>
+            </label>
           </div>
 
           {/* Send button */}

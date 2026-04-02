@@ -20,6 +20,10 @@ export function stripHtml(text: string): string {
   return text.replace(/<[^>]*>/g, "");
 }
 
+export function formatKoreanDate(date: Date = new Date()): string {
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
 /** **볼드** 마크다운을 <strong> 태그로 변환 (다른 HTML은 이스케이프) */
 export function renderBoldMarkdown(text: string): string {
   const escaped = stripHtml(text)

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, Mail, Users, Send, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Mail, Users, Send, X, Loader2, Trash2 } from "lucide-react";
 import { EmailPreview } from "@/components/email/email-preview";
 import { isValidEmail } from "@/lib/utils";
 import type { SendHistoryDetail, SendEmailRequest, RecipientSuggestion } from "@/types";
@@ -20,6 +20,7 @@ export default function HistoryDetailPage() {
   const [suggestions, setSuggestions] = useState<RecipientSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
@@ -98,6 +99,7 @@ export default function HistoryDetailPage() {
           recipients: finalRecipients,
           items: detail.contentSnapshot,
           sourceUrls: detail.sourceUrls,
+          isResend: true,
         }),
       });
       const data = await res.json();
@@ -111,6 +113,25 @@ export default function HistoryDetailPage() {
       toast.error("서버와 연결할 수 없습니다.");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!detail || !confirm("이 발송 이력을 삭제하시겠습니까?")) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/history/${params.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("발송 이력이 삭제되었습니다.");
+        router.push("/dashboard");
+      } else {
+        toast.error(data.message || "삭제에 실패했습니다.");
+      }
+    } catch {
+      toast.error("서버와 연결할 수 없습니다.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -138,15 +159,26 @@ export default function HistoryDetailPage() {
           <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
           대시보드로 돌아가기
         </button>
-        <button
-          type="button"
-          onClick={handleResend}
-          disabled={sending || editRecipients.length === 0}
-          className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-purple-700 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          {sending ? "발송 중..." : "재발송"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 rounded-2xl border border-red-200 bg-white px-5 py-3 text-sm font-semibold text-red-600 transition-all hover:bg-red-50 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            삭제
+          </button>
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={sending || editRecipients.length === 0}
+            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-purple-700 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {sending ? "발송 중..." : "재발송"}
+          </button>
+        </div>
       </div>
 
       {/* Title */}

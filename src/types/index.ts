@@ -49,6 +49,8 @@ export interface SendEmailRequest {
     slackAuthor: string | null;
   }[];
   sourceUrls: string[];
+  isResend?: boolean;
+  skipSlack?: boolean;
 }
 
 export interface SendEmailResponse {

@@ -59,11 +59,6 @@ export function Header() {
               <span className="text-sm font-medium text-gray-700">
                 {session.user.name}
               </span>
-              {session.user.role === "ADMIN" && (
-                <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                  ADMIN
-                </span>
-              )}
             </div>
             <button
               type="button"
