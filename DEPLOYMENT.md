@@ -49,6 +49,7 @@
 | DBMS | **SQLite** (EFS 위) | 최대 5명, 월 5건 — RDS 불필요 |
 | 파일 스토리지 | **EFS** (PVC 마운트) | DB 파일 + 스크린샷 업로드 영속 저장 |
 | 애플리케이션 | **Next.js 풀스택** | 프론트엔드 + API가 단일 컨테이너 |
+| 스케일링 | **KEDA** (Scale-to-Zero) | 주 1회 사용 — 유휴 시 Pod 0개로 리소스 절약 |
 
 > **SQLite 주의사항**: Pod replica를 **1개**로 유지해야 합니다.
 > SQLite는 동시 쓰기를 직렬화하므로, 여러 Pod에서 같은 DB 파일에 접근하면 lock 충돌이 발생합니다.
@@ -101,6 +102,8 @@
   - Istio (IngressGateway, VirtualService)
   - Argo Rollouts Controller
   - EFS CSI Driver (aws-efs-csi-driver)
+  - KEDA (Kubernetes Event-Driven Autoscaling) — Scale-to-Zero용
+  - KEDA HTTP Add-on — HTTP 요청 기반 자동 기동용
 ```
 
 ### 2-4. ALB + Istio IngressGateway
@@ -311,11 +314,11 @@ spec:
               mountPath: /app/storage
           resources:
             requests:
-              cpu: 250m
-              memory: 512Mi
+              cpu: 100m
+              memory: 256Mi
             limits:
               cpu: 500m
-              memory: 1Gi
+              memory: 512Mi
           livenessProbe:
             httpGet:
               path: /api/health
@@ -544,7 +547,146 @@ kubectl -n fassto-herald describe pod <pod-name>
 
 ---
 
-## 9. 체크리스트
+## 9. Scale-to-Zero (리소스 최적화)
+
+이 서비스는 주 1회 정도 사용되므로, 유휴 시 Pod를 0개로 축소하여 리소스를 절약합니다.
+
+### 9-1. 방안 비교
+
+| 방안 | 장점 | 단점 | 권장 |
+|------|------|------|------|
+| **KEDA HTTP Add-on** | 자동 기동/축소, 요청 유실 없음 | KEDA + Add-on 설치 필요 | **권장** |
+| **수동 스케일링** | 추가 설치 없음, 단순 | 사용 전 수동 기동 필요 | 대안 |
+| **CronJob 스케줄** | 반자동 | 불규칙 사용 패턴에 부적합 | 비권장 |
+
+### 9-2. 권장: KEDA HTTP Add-on (자동 Scale-to-Zero)
+
+KEDA HTTP Add-on은 HTTP 요청을 프록시하며, Pod가 0개일 때 요청이 들어오면 자동으로 Pod를 기동하고 요청을 대기시킵니다.
+
+#### 사전 설치
+
+```bash
+# KEDA 설치
+helm repo add kedacore https://kedacore.github.io/charts
+helm install keda kedacore/keda -n keda-system --create-namespace
+
+# KEDA HTTP Add-on 설치
+helm install http-add-on kedacore/keda-add-ons-http -n keda-system
+```
+
+#### HTTPScaledObject 매니페스트
+
+```yaml
+# k8s/keda-http.yaml
+apiVersion: http.keda.sh/v1alpha1
+kind: HTTPScaledObject
+metadata:
+  name: herald-scaledobject
+  namespace: fassto-herald
+spec:
+  hosts:
+    - herald.fassto.ai
+  pathPrefixes:
+    - /
+  scaleTargetRef:
+    name: app                    # Argo Rollout 이름
+    kind: Rollout
+    apiVersion: argoproj.io/v1alpha1
+    service: app                 # 트래픽을 받는 Service 이름
+    port: 3100
+  replicas:
+    min: 0                       # 유휴 시 0개
+    max: 1                       # SQLite — 최대 1개
+  scalingMetric:
+    requestRate:
+      targetValue: 1             # 요청 1개 이상이면 스케일 업
+      granularity: 1s
+      window: 1m
+  scaledownPeriod: 300           # 5분간 요청 없으면 스케일 다운
+```
+
+> **동작 흐름**:
+> 1. 유휴 상태: Pod 0개 (CPU/메모리 소비 없음)
+> 2. 사용자가 `herald.fassto.ai` 접속
+> 3. KEDA HTTP Add-on 인터셉터가 요청을 대기열에 보관
+> 4. Pod 1개 자동 기동 (~15-30초)
+> 5. Pod Ready 후 요청 전달
+> 6. 5분간 추가 요청 없으면 다시 Pod 0개로 축소
+
+> **Cold Start 참고**: 최초 접속 시 Pod 기동까지 15-30초 소요됩니다.
+> 주 1회 사용 패턴에서는 허용 가능한 수준입니다.
+
+#### Istio 연동 시 주의
+
+KEDA HTTP Add-on은 자체 프록시를 통해 트래픽을 라우팅합니다.
+Istio VirtualService의 destination을 KEDA 인터셉터 프록시 Service로 변경해야 합니다.
+
+```yaml
+# k8s/istio.yaml — VirtualService 수정 (KEDA 연동)
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: herald-vs
+  namespace: fassto-herald
+spec:
+  hosts:
+    - herald.fassto.ai
+  gateways:
+    - herald-gw
+  http:
+    - name: app-route
+      route:
+        - destination:
+            host: keda-add-ons-http-interceptor-proxy.keda-system.svc.cluster.local
+            port:
+              number: 8080
+          weight: 100
+```
+
+#### Argo Rollout 수정
+
+KEDA가 replicas를 관리하므로, Rollout에서 `replicas` 필드를 제거합니다.
+
+```yaml
+# k8s/app.yaml 에서 변경
+spec:
+  # replicas: 1  ← 제거 (KEDA가 관리)
+  strategy:
+    canary:
+      ...
+```
+
+### 9-3. 대안: 수동 스케일링
+
+KEDA 설치가 어려운 경우, 수동으로 Pod를 기동/중지할 수 있습니다.
+
+```bash
+# 서비스 기동 (사용 전)
+kubectl -n fassto-herald argo rollouts set replicas app 1
+kubectl -n fassto-herald argo rollouts status app  # Ready 확인
+
+# 서비스 중지 (사용 후)
+kubectl -n fassto-herald argo rollouts set replicas app 0
+```
+
+> **Tip**: Slack Workflow나 간단한 스크립트로 `/herald-start`, `/herald-stop` 명령을 만들면
+> 비개발자도 직접 서비스를 기동/중지할 수 있습니다.
+
+### 9-4. 예상 리소스 절감
+
+| 항목 | 상시 가동 (기존) | Scale-to-Zero |
+|------|-----------------|---------------|
+| Pod 가동 시간 | 24h × 7일 = **168h/주** | ~2-3h/주 (사용 시만) |
+| CPU (requests) | 100m × 168h | 100m × ~3h |
+| 메모리 (requests) | 256Mi × 168h | 256Mi × ~3h |
+| **절감률** | — | **~98%** |
+
+> **참고**: EFS 비용은 저장 용량 기준이므로 Scale-to-Zero와 무관하게 동일합니다.
+> 다만 SQLite + 스크린샷 저장이므로 EFS 비용 자체가 미미합니다 (GB당 $0.30/월).
+
+---
+
+## 10. 체크리스트
 
 ### 배포 전 — AWS 관리자
 
@@ -552,6 +694,7 @@ kubectl -n fassto-herald describe pod <pod-name>
 - [ ] EFS: 파일시스템 및 액세스 포인트 생성
 - [ ] EKS: 네임스페이스 `fassto-herald` 생성 + Istio sidecar injection 활성화
 - [ ] EKS: EFS CSI Driver, Istio, Argo Rollouts Controller 설치 확인
+- [ ] EKS: KEDA + KEDA HTTP Add-on 설치 (Scale-to-Zero용)
 - [ ] ALB: Istio IngressGateway 연결 (HTTPS→HTTP 종료)
 - [ ] Route 53: `herald.fassto.ai` A 레코드 → ALB
 - [ ] 보안그룹: EKS 노드 → EFS NFS(2049) 허용
@@ -563,7 +706,7 @@ kubectl -n fassto-herald describe pod <pod-name>
 - [ ] `Dockerfile` 생성
 - [ ] `.dockerignore` 파일 생성
 - [ ] `src/app/api/health/route.ts` 헬스체크 엔드포인트 추가
-- [ ] `k8s/` 디렉토리에 매니페스트 파일 생성
+- [ ] `k8s/` 디렉토리에 매니페스트 파일 생성 (KEDA HTTPScaledObject 포함)
 - [ ] K8s Secret 생성 (`herald-secrets`)
 - [ ] 로컬 Docker 빌드 테스트
 
@@ -575,3 +718,4 @@ kubectl -n fassto-herald describe pod <pod-name>
 - [ ] 이메일 발송 동작
 - [ ] 스크린샷 업로드 → EFS 영속 확인 (Pod 재시작 후 파일 존재 여부)
 - [ ] EFS 백업 계획 설정
+- [ ] Scale-to-Zero 동작 확인 (5분 유휴 후 Pod 0개 → 재접속 시 자동 기동)
