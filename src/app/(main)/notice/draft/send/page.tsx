@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { Send, Sparkles, X, Loader2, CheckCircle } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { isValidEmail, renderBoldMarkdown, formatKoreanDate } from "@/lib/utils";
 import { getCategoryStyle, EMAIL_GREETING, EMAIL_GREETING_SUB } from "@/lib/category-styles";
 import type {

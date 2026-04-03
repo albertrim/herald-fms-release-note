@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { toast } from "sonner";
 import { ArrowLeft, Calendar, Mail, Users, Send, X, Loader2, Trash2 } from "lucide-react";
 import { EmailPreview } from "@/components/email/email-preview";
+import { toast } from "@/lib/toast";
 import { isValidEmail } from "@/lib/utils";
 import type { SendHistoryDetail, SendEmailRequest, RecipientSuggestion } from "@/types";
 
