@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Send, Sparkles, X, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -336,8 +337,8 @@ export default function SendPage() {
                       {item.screenshots.length > 0 && (
                         <div className="mt-4 grid grid-cols-5 gap-2">
                           {item.screenshots.map((url, j) => (
-                            <div key={j} className="aspect-square overflow-hidden rounded-lg border border-gray-200">
-                              <img src={url} alt="" className="h-full w-full object-cover" />
+                            <div key={j} className="relative aspect-square overflow-hidden rounded-lg border border-gray-200">
+                              <Image src={url} alt="" fill className="object-cover" />
                             </div>
                           ))}
                         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -56,9 +57,11 @@ export function ScreenshotUploader({
       <div className="flex flex-wrap gap-2">
         {screenshots.map((url, index) => (
           <div key={index} className="group relative">
-            <img
+            <Image
               src={url}
               alt={`스크린샷 ${index + 1}`}
+              width={80}
+              height={80}
               className="h-20 w-20 rounded border object-cover"
             />
             <button

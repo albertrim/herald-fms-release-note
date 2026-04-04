@@ -1,58 +1,75 @@
 import { test, expect } from "@playwright/test";
+import { injectSession, cleanupSession } from "./helpers/auth-helper";
 
-test.describe("인증 플로우", () => {
+test.describe("인증 플로우 (Google SSO)", () => {
   test("미인증 사용자는 로그인 페이지로 리다이렉트된다", async ({ page }) => {
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("회원가입 페이지가 표시된다", async ({ page }) => {
-    await page.goto("/signup");
-    await expect(page.getByText("회원가입", { exact: true }).first()).toBeVisible();
-    await expect(page.getByLabel("이름")).toBeVisible();
-    await expect(page.getByLabel("이메일")).toBeVisible();
-    await expect(page.getByLabel("비밀번호", { exact: true })).toBeVisible();
-    await expect(page.getByLabel("비밀번호 확인")).toBeVisible();
-  });
-
-  test("로그인 페이지가 표시된다", async ({ page }) => {
+  test("로그인 페이지에 Google 버튼이 표시된다", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByText("로그인", { exact: true }).first()).toBeVisible();
-    await expect(page.getByLabel("이메일")).toBeVisible();
-    await expect(page.getByLabel("비밀번호")).toBeVisible();
-  });
-
-  test("잘못된 인증 정보로 로그인하면 오류 메시지가 표시된다", async ({ page }) => {
-    await page.goto("/login");
-    await page.getByLabel("이메일").fill("wrong@example.com");
-    await page.getByLabel("비밀번호").fill("wrongpassword");
-    await page.getByRole("button", { name: "로그인" }).click();
-
+    await expect(page.getByText("FASSTO Herald")).toBeVisible();
     await expect(
-      page.getByText("이메일 또는 비밀번호가 올바르지 않습니다")
-    ).toBeVisible({ timeout: 10000 });
+      page.getByRole("button", { name: /Google 계정으로 로그인/ })
+    ).toBeVisible();
+    await expect(
+      page.getByText("@fassto.com 계정으로만 로그인할 수 있습니다")
+    ).toBeVisible();
+    // 이메일/비밀번호 폼이 없어야 함
+    await expect(page.getByLabel("이메일")).not.toBeVisible();
+    await expect(page.getByLabel("비밀번호")).not.toBeVisible();
   });
 
-  test("시드된 관리자 계정으로 로그인하면 대시보드로 이동한다", async ({ page }) => {
+  test("AccessDenied 오류 시 도메인 제한 배너가 표시된다", async ({ page }) => {
+    await page.goto("/login?error=AccessDenied");
+    await expect(
+      page.getByText("@fassto.com 계정만 사용할 수 있습니다.")
+    ).toBeVisible();
+  });
+
+  test("정상 로그인 페이지에서는 오류 배너가 없다", async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel("이메일").fill("admin@company.com");
-    await page.getByLabel("비밀번호").fill("admin1234");
-    await page.getByRole("button", { name: "로그인" }).click();
-
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
-    await expect(page.getByText("대시보드")).toBeVisible();
+    await expect(
+      page.getByText("@fassto.com 계정만 사용할 수 있습니다.")
+    ).not.toBeVisible();
   });
 
-  test("회원가입 후 로그인 페이지로 이동한다", async ({ page }) => {
-    const email = `test-${Date.now()}@example.com`;
+  test("세션 주입 후 대시보드에 접근할 수 있다", async ({ page }) => {
+    const sessionToken = await injectSession(page);
+    try {
+      await page.goto("/dashboard");
+      await expect(page).toHaveURL(/\/dashboard/);
+      await expect(page).not.toHaveURL(/\/login/);
+    } finally {
+      await cleanupSession(sessionToken);
+    }
+  });
 
-    await page.goto("/signup");
-    await page.getByLabel("이름").fill("테스트 사용자");
-    await page.getByLabel("이메일").fill(email);
-    await page.getByLabel("비밀번호", { exact: true }).fill("testpass1234");
-    await page.getByLabel("비밀번호 확인").fill("testpass1234");
-    await page.getByRole("button", { name: "회원가입" }).click();
+  test("세션 주입 후 로그아웃하면 로그인 페이지로 이동한다", async ({ page }) => {
+    const sessionToken = await injectSession(page);
+    try {
+      await page.goto("/dashboard");
+      await expect(page).toHaveURL(/\/dashboard/);
+      await page.getByRole("button", { name: "로그아웃" }).click();
+      await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
+    } finally {
+      await cleanupSession(sessionToken);
+    }
+  });
 
+  test("로그아웃 후 보호된 페이지 접근 시 로그인 페이지로 리다이렉트된다", async ({
+    page,
+  }) => {
+    const sessionToken = await injectSession(page);
+    await page.goto("/dashboard");
+    await page.getByRole("button", { name: "로그아웃" }).click();
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
+
+    // 로그아웃 후 대시보드 직접 접근 시 다시 로그인 페이지로
+    await page.goto("/dashboard");
+    await expect(page).toHaveURL(/\/login/);
+
+    await cleanupSession(sessionToken);
   });
 });

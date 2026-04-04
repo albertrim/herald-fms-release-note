@@ -292,7 +292,7 @@ export default function HistoryDetailPage() {
               </div>
             )}
           </div>
-          <p className="mt-1.5 text-xs text-gray-400">수신자를 추가/삭제한 후 상단의 "재발송" 버튼을 누르세요.</p>
+          <p className="mt-1.5 text-xs text-gray-400">수신자를 추가/삭제한 후 상단의 &ldquo;재발송&rdquo; 버튼을 누르세요.</p>
         </div>
       </div>
 

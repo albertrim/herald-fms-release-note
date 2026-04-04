@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
@@ -86,10 +87,12 @@ export function NoticeItemCard({
           {item.screenshots.length > 0 && (
             <div className="mt-2 flex gap-1">
               {item.screenshots.map((url, i) => (
-                <img
+                <Image
                   key={i}
                   src={url}
                   alt={`스크린샷 ${i + 1}`}
+                  width={48}
+                  height={48}
                   className="h-12 w-12 rounded border object-cover"
                 />
               ))}

@@ -1,6 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { auth } from "@/lib/auth";
-import { EmailService } from "@/services/email.service";
+import { EmailService, REAUTH_REQUIRED } from "@/services/email.service";
 import { SlackService } from "@/services/slack.service";
 import { isValidEmail } from "@/lib/utils";
 import type { SendEmailRequest } from "@/types";
@@ -33,7 +33,18 @@ export async function POST(request: Request) {
     }
 
     const emailService = new EmailService();
-    const result = await emailService.sendNotice(body, session.user.id);
+    let result: { historyId: string; status: "SUCCESS" | "FAILED" };
+    try {
+      result = await emailService.sendNotice(body, session.user.id);
+    } catch (err) {
+      if (err instanceof Error && err.message === REAUTH_REQUIRED) {
+        return NextResponse.json(
+          { error: "REAUTH_REQUIRED", message: "Google 계정 재로그인이 필요합니다." },
+          { status: 401 }
+        );
+      }
+      throw err;
+    }
 
     if (result.status === "FAILED") {
       return NextResponse.json(

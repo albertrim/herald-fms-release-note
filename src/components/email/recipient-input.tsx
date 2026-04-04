@@ -19,6 +19,7 @@ export function RecipientInput({ recipients, onChange }: RecipientInputProps) {
 
   useEffect(() => {
     if (query.length < 1) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestions([]);
       return;
     }

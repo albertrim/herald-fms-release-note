@@ -1,45 +1,48 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt" },
+  adapter: PrismaAdapter(prisma),
+  session: { strategy: "database" },
   pages: {
     signIn: "/login",
   },
   providers: [
-    Credentials({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email) return null;
-
-        const email = (credentials.email as string).trim().toLowerCase();
-        if (!email.endsWith("@fassto.com")) return null;
-
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !user.verified) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        };
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
+      authorization: {
+        params: {
+          scope:
+            "openid email profile https://www.googleapis.com/auth/gmail.send",
+          access_type: "offline",
+          prompt: "select_account",
+        },
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
+    async signIn({ account, profile, user }) {
+      if (account?.provider !== "google") return false;
+      const email = profile?.email ?? "";
+      if (!email.endsWith("@fassto.com")) return false;
+
+      if (profile?.name && user?.id) {
+        const name = profile.name.replace(/\(.*\)$/, "").trim();
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { name },
+        });
       }
-      return token;
+
+      return true;
     },
-    async session({ session, token }) {
+    async session({ session, user }) {
       if (session.user) {
-        session.user.id = token.id as string;
+        session.user.id = user.id;
       }
       return session;
     },

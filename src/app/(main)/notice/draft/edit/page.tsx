@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -206,10 +207,12 @@ function DraftCard({
           {item.screenshots.length > 0 && (
             <div className="mt-3 flex gap-2">
               {item.screenshots.map((url, i) => (
-                <img
+                <Image
                   key={i}
                   src={url}
                   alt={`스크린샷 ${i + 1}`}
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-lg border border-gray-200 object-cover"
                 />
               ))}
@@ -272,6 +275,7 @@ export default function DraftEditPage() {
       return;
     }
     const draft: DraftNotice = JSON.parse(stored);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems(draft.items);
     setSourceUrls(draft.sourceUrls);
   }, [router]);
@@ -378,8 +382,6 @@ export default function DraftEditPage() {
     router.push("/notice/draft/send");
   }
 
-  const screenshotItem = items.find((i) => i.id === screenshotItemId);
-
   return (
     <div className="mx-auto max-w-4xl py-8">
       <button
@@ -478,7 +480,7 @@ export default function DraftEditPage() {
           disabled={items.length === 0}
           className="flex-1 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 py-3 text-sm font-medium text-white shadow-lg shadow-blue-600/20 transition-all hover:from-blue-700 hover:to-purple-700 disabled:opacity-50"
         >
-          이메일 발송
+          이메일 발송 준비
         </button>
       </div>
 
