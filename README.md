@@ -10,9 +10,9 @@ JIRA 릴리즈 URL을 입력하면 AI가 티켓을 분석하여 비개발자가 
 - **AI 변환** — 기술 용어를 비개발자 관점의 개선/변화 사항으로 자동 변환, 핵심 효과 **볼드** 강조
 - **유사 티켓 자동 병합** — 제목 유사도 90% 이상인 티켓만 하나의 공지 항목으로 통합
 - **초안 편집** — 삭제, 병합, 수정, 드래그앤드롭 순서 변경, 카테고리 지정, 스크린샷 첨부
-- **이메일 발송** — HTML 이메일 발송, 수신자 자동완성, 최근 수신자 자동 채움, 발송 이력 관리/삭제, 재발송
+- **이메일 발송** — 로그인 사용자의 Gmail 계정에서 직접 발송 (Gmail API), 수신자 자동완성, 최근 수신자 자동 채움, 발송 이력 관리/삭제, 재발송
 - **Slack 연동** — JIRA 커스텀 필드("Slack 링크")에서 URL 추출, 메시지에서 요청자/작성자 이름 자동 추출, 배포 완료 스레드 댓글 자동 작성
-- **사용자 인증** — @fassto.com 이메일 인증 (최초 1회 인증 코드, 이후 이메일만으로 로그인)
+- **Google SSO 인증** — Google OAuth로 로그인 (@fassto.com 도메인 제한), Gmail API 메일 발송 권한 자동 획득
 
 ## 기술 스택
 
@@ -20,9 +20,9 @@ JIRA 릴리즈 URL을 입력하면 AI가 티켓을 분석하여 비개발자가 
 |--------|------|
 | Framework | Next.js 16 (App Router), React 19, TypeScript |
 | Database | SQLite (Prisma 5) |
-| Auth | Auth.js v5 (Credentials, @fassto.com 이메일 인증) |
+| Auth | Auth.js v5 (Google OAuth, @fassto.com 도메인 제한, DB 세션) |
 | AI | Vercel AI SDK + Anthropic Claude |
-| Email | Nodemailer (Gmail SMTP) |
+| Email | Gmail API (googleapis, 로그인 사용자 계정에서 발송) |
 | UI | Tailwind CSS 4, lucide-react, @dnd-kit |
 | Slack | Slack Web API (conversations.history, users.info, chat.postMessage) |
 
@@ -32,12 +32,24 @@ JIRA 릴리즈 URL을 입력하면 AI가 티켓을 분석하여 비개발자가 
 
 - Node.js 20+
 - pnpm
+- Google Cloud Console 프로젝트 (OAuth 클라이언트 ID + Gmail API 활성화)
 
 ### 설치
 
 ```bash
 pnpm install
 ```
+
+### Google Cloud Console 설정
+
+1. [Google Cloud Console](https://console.cloud.google.com) → 프로젝트 생성
+2. **API 및 서비스 → 라이브러리** → **Gmail API** 활성화
+3. **Google 인증 플랫폼 → 대상** → OAuth 동의 화면 구성
+   - 사용자 유형: **내부** (Google Workspace) 또는 **외부** (로컬 테스트)
+   - 범위: `email`, `profile`, `openid`, `https://www.googleapis.com/auth/gmail.send`
+4. **클라이언트** → OAuth 2.0 클라이언트 ID 생성 (웹 애플리케이션)
+   - 승인된 리디렉션 URI: `http://localhost:3100/api/auth/callback/google`
+   - 운영: `https://your-domain.com/api/auth/callback/google`
 
 ### 환경변수 설정
 
@@ -49,14 +61,14 @@ cp .env.example .env.local
 
 | 변수 | 설명 |
 |------|------|
-| `NEXTAUTH_SECRET` | Auth.js 시크릿 키 (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) |
+| `AUTH_SECRET` | Auth.js 시크릿 키 (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) |
+| `GOOGLE_CLIENT_ID` | Google OAuth 클라이언트 ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth 클라이언트 보안 비밀번호 |
 | `JIRA_BASE_URL` | Atlassian Cloud URL (예: `https://company.atlassian.net`) |
 | `JIRA_API_TOKEN` | JIRA API 토큰 |
 | `JIRA_USER_EMAIL` | JIRA 서비스 계정 이메일 |
 | `ANTHROPIC_API_KEY` | Anthropic API 키 |
 | `SLACK_BOT_TOKEN` | Slack Bot Token (`xoxb-...`) |
-| `SMTP_USER` | Gmail 계정 |
-| `SMTP_PASS` | Gmail 앱 비밀번호 |
 
 ### DB 초기화
 
@@ -92,7 +104,7 @@ http://localhost:3100 에서 접속합니다.
 ```
 src/
 ├── app/
-│   ├── (auth)/          # 로그인 (이메일 인증)
+│   ├── (auth)/          # Google SSO 로그인
 │   ├── (main)/          # 인증 필수 영역
 │   │   ├── dashboard/   # 대시보드 (발송 이력)
 │   │   ├── notice/      # URL 입력, 초안 편집, 이메일 발송
@@ -102,6 +114,7 @@ src/
 ├── services/            # 비즈니스 로직 (JIRA, AI, Email, Slack)
 ├── email-templates/     # 이메일 HTML 템플릿
 ├── lib/                 # 인프라 (auth, prisma, utils, 디자인 토큰)
+├── proxy.ts             # Next.js 16 라우팅 프록시 (인증 체크)
 └── types/               # TypeScript 타입 정의
 
 prisma/
@@ -112,11 +125,11 @@ prisma/
 
 ## 사용 흐름
 
-1. **로그인** → @fassto.com 이메일 입력 (최초 1회 인증 코드 검증)
+1. **로그인** → Google 계정으로 로그인 (@fassto.com 계정만 허용)
 2. **새 공지 생성** → JIRA Release Note URL 입력 (FMS, OMS)
 3. **초안 자동 생성** → AI가 티켓 분석, 비개발자 관점으로 변환 (핵심 효과 볼드 강조), Slack 요청자 자동 연결
 4. **초안 편집** → 항목 삭제/병합/수정, 순서 변경, 카테고리 지정, 스크린샷 첨부
-5. **이메일 발송** → 수신자 설정 (최근 수신자 자동 채움), HTML 미리보기, Slack 댓글 옵션 선택 후 발송
+5. **이메일 발송** → 수신자 설정 (최근 수신자 자동 채움), HTML 미리보기, Slack 댓글 옵션 선택 후 발송 (로그인 사용자의 Gmail에서 발송)
 6. **이력 관리** → 발송 이력 조회/삭제, 수신자 편집 후 재발송
 
 ## Slack Bot 설정
