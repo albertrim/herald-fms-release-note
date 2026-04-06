@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { upload } from "@/lib/storage";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 const MAX_SIZE = 4 * 1024 * 1024; // 4MB
 
@@ -42,16 +40,13 @@ export async function POST(request: Request) {
       );
     }
 
-    await mkdir(UPLOAD_DIR, { recursive: true });
-
     const ext = file.name.split(".").pop() || "png";
-    const filename = `${uuidv4()}.${ext}`;
-    const filepath = path.join(UPLOAD_DIR, filename);
-
+    const key = `${uuidv4()}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filepath, buffer);
 
-    return NextResponse.json({ url: `/uploads/${filename}` });
+    const url = await upload(key, buffer, file.type);
+
+    return NextResponse.json({ url });
   } catch {
     return NextResponse.json(
       { error: "UPLOAD_FAILED", message: "파일 업로드에 실패했습니다." },

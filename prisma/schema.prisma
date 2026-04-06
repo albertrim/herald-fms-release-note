@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./data.db"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -26,12 +26,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
   expires_at        Int?
   token_type        String?
-  scope             String?
-  id_token          String?
+  scope             String?  @db.Text
+  id_token          String?  @db.Text
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -59,10 +59,10 @@ model SendHistory {
   userId          String
   title           String
   senderName      String
-  recipients      String   // JSON array
+  recipients      String   @db.Text // JSON array
   status          String   // "SUCCESS" | "FAILED"
-  contentSnapshot String   // JSON
-  sourceUrls      String   // JSON array
+  contentSnapshot String   @db.LongText // JSON
+  sourceUrls      String   @db.Text // JSON array
   sentAt          DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id])
 }

@@ -2,7 +2,7 @@
 
 > fms-release-note (FASSTO Herald) 서비스를 AWS 인프라에 배포하기 위한 가이드
 >
-> **최종 업데이트**: 2026-04-02
+> **최종 업데이트**: 2026-04-06
 
 ## 1. 아키텍처 개요
 
@@ -29,13 +29,12 @@
                      ┌───────────────▼─────────────────┐
                      │   Argo Rollout (Canary)          │
                      │   app — Port 3100                │
-                     └───────────────┬─────────────────┘
-                                     │
-                     ┌───────────────▼─────────────────┐
-                     │   EFS (PVC)                      │
-                     │   ├─ data.db (SQLite)            │
-                     │   └─ uploads/ (스크린샷)          │
-                     └─────────────────────────────────┘
+                     └──────┬─────────────────┬────────┘
+                            │                 │
+            ┌───────────────▼──────┐  ┌───────▼───────────────────┐
+            │   RDS MySQL          │  │   S3 Bucket               │
+            │   (herald DB)        │  │   (스크린샷 업로드)        │
+            └──────────────────────┘  └───────────────────────────┘
 ```
 
 ### 핵심 설계 결정
@@ -46,14 +45,10 @@
 | 서비스 메시 | **Istio** | Fassto 표준 — VirtualService 라우팅, mTLS |
 | 배포 전략 | **Argo Rollouts** (Canary) | Istio weight 기반 점진적 배포 |
 | SSL 종료 | **ALB** (ACM) | Istio IngressGateway는 HTTP만 수신 |
-| DBMS | **SQLite** (EFS 위) | 최대 5명, 월 5건 — RDS 불필요 |
-| 파일 스토리지 | **EFS** (PVC 마운트) | DB 파일 + 스크린샷 업로드 영속 저장 |
+| DBMS | **RDS MySQL** | 운영 환경 표준 — 자동 백업, 다중 AZ, Pod 스케일링 자유 |
+| 파일 스토리지 | **S3** | 스크린샷 업로드 — Pod 무상태, 다중 Pod 호환 |
 | 애플리케이션 | **Next.js 풀스택** | 프론트엔드 + API가 단일 컨테이너 |
 | 스케일링 | **KEDA** (Scale-to-Zero) | 주 1회 사용 — 유휴 시 Pod 0개로 리소스 절약 |
-
-> **SQLite 주의사항**: Pod replica를 **1개**로 유지해야 합니다.
-> SQLite는 동시 쓰기를 직렬화하므로, 여러 Pod에서 같은 DB 파일에 접근하면 lock 충돌이 발생합니다.
-> 이 서비스의 트래픽 규모(최대 5명)에서는 단일 Pod으로 충분합니다.
 
 ---
 
@@ -69,29 +64,45 @@
 리전: ap-northeast-2 (서울)
 ```
 
-### 2-2. EFS (Elastic File System)
+### 2-2. S3 Bucket (스크린샷 업로드)
 
 ```
-파일시스템명: fassto-herald-storage
+버킷명: fassto-herald-uploads
 리전: ap-northeast-2 (서울)
-성능 모드: General Purpose
-처리량 모드: Bursting
-암호화: 활성화 (AWS 관리형 키)
-
-액세스 포인트:
-  - 경로: /fassto-herald
-  - POSIX 사용자: UID 1001, GID 1001
-  - 루트 디렉토리 권한: 0755
-
-마운트 타겟:
-  - EKS 워커 노드가 위치한 서브넷에 각각 생성
-  - 보안그룹: EKS 노드 보안그룹에서 NFS(2049) 허용
+퍼블릭 액세스: 활성화 (이메일 내 이미지 직접 참조용)
+버킷 정책: GetObject 퍼블릭 허용 (uploads/ 프리픽스)
+암호화: SSE-S3 (기본)
+버전 관리: 비활성화
+수명 주기: 180일 후 자동 삭제 (선택)
 ```
 
-> **EFS 용도**: SQLite DB 파일(`data.db`) + 스크린샷 업로드 파일(`uploads/`)을 영속 저장합니다.
-> Pod 재시작/재배포 시에도 데이터가 유지됩니다.
+> **S3 용도**: 스크린샷 업로드 파일을 저장합니다.
+> Pod 무상태로 동작하여 스케일링에 제약이 없습니다.
 
-### 2-3. EKS 네임스페이스 + Istio
+### 2-3. RDS MySQL
+
+```
+엔진: MySQL 8.0
+인스턴스: db.t4g.micro (최소 사양 — 최대 5명 사용)
+리전: ap-northeast-2 (서울)
+스토리지: gp3, 20GB
+DB 이름: herald
+마스터 사용자: herald_admin
+
+네트워크:
+  - VPC: EKS 클러스터와 동일 VPC
+  - 서브넷 그룹: 프라이빗 서브넷 (EKS 워커 노드와 동일 AZ)
+  - 퍼블릭 액세스: 비활성화
+
+백업:
+  - 자동 백업: 활성화 (보존 기간 7일)
+  - 백업 윈도우: 18:00-19:00 UTC (KST 03:00-04:00)
+
+보안그룹 (rds-herald-sg):
+  - Inbound: eks-node-sg에서 3306 (MySQL) 허용
+```
+
+### 2-4. EKS 네임스페이스 + Istio
 
 ```
 기존 Fassto EKS 클러스터에 네임스페이스 생성:
@@ -101,12 +112,11 @@
 필수 구성 요소 (기존 클러스터에 설치 확인):
   - Istio (IngressGateway, VirtualService)
   - Argo Rollouts Controller
-  - EFS CSI Driver (aws-efs-csi-driver)
   - KEDA (Kubernetes Event-Driven Autoscaling) — Scale-to-Zero용
   - KEDA HTTP Add-on — HTTP 요청 기반 자동 기동용
 ```
 
-### 2-4. ALB + Istio IngressGateway
+### 2-5. ALB + Istio IngressGateway
 
 ```
 ALB:
@@ -119,16 +129,17 @@ ALB:
   - ALB → Istio IngressGateway → VirtualService → app
 ```
 
-### 2-5. Route 53
+### 2-6. Route 53
 
 ```
 A 레코드 (Alias): herald.fassto.ai → ALB DNS
 ```
 
-### 2-6. K8s Secrets
+### 2-7. K8s Secrets
 
 ```
 kubectl -n fassto-herald create secret generic herald-secrets \
+  --from-literal=DATABASE_URL='mysql://herald_admin:<비밀번호>@<RDS엔드포인트>:3306/herald' \
   --from-literal=NEXTAUTH_SECRET='<랜덤 64자 문자열>' \
   --from-literal=JIRA_API_TOKEN='<JIRA API 토큰>' \
   --from-literal=ANTHROPIC_API_KEY='<Anthropic API 키>' \
@@ -136,15 +147,43 @@ kubectl -n fassto-herald create secret generic herald-secrets \
   --from-literal=SMTP_PASS='<Gmail 앱 비밀번호>'
 ```
 
-### 2-7. 보안그룹
+> **S3 접근**: Pod의 IAM Role(IRSA)로 인증하므로 Secret에 AWS 키 불필요.
+
+### 2-8. IAM Role for Service Account (IRSA)
+
+```
+EKS Pod에서 S3에 접근하기 위한 IAM 설정:
+
+1. IAM 정책 생성 (fassto-herald-s3-policy):
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": ["s3:PutObject", "s3:DeleteObject"],
+         "Resource": "arn:aws:s3:::fassto-herald-uploads/uploads/*"
+       }
+     ]
+   }
+
+2. IAM Role 생성 (fassto-herald-s3-role):
+   - 신뢰 정책: EKS OIDC Provider 연결
+   - 위 정책 연결
+
+3. K8s ServiceAccount 어노테이션:
+   kubectl -n fassto-herald annotate serviceaccount default \
+     eks.amazonaws.com/role-arn=arn:aws:iam::<ACCOUNT_ID>:role/fassto-herald-s3-role
+```
+
+### 2-9. 보안그룹
 
 ```
 eks-node-sg (기존):
-  - Outbound: EFS 보안그룹 2049 (NFS) 허용 추가
-  - Outbound: HTTPS 443 (외부 API — JIRA, Anthropic, Slack, Gmail SMTP)
+  - Outbound: RDS 보안그룹 3306 (MySQL) 허용 추가
+  - Outbound: HTTPS 443 (외부 API — JIRA, Anthropic, Slack, Gmail SMTP, S3)
 
-efs-sg:
-  - Inbound: eks-node-sg에서 2049 허용
+rds-herald-sg:
+  - Inbound: eks-node-sg에서 3306 허용
 ```
 
 ---
@@ -182,9 +221,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
-# 스토리지 디렉토리 (EFS 마운트 포인트)
-RUN mkdir -p /app/storage/uploads && chown -R nextjs:nodejs /app/storage
-
 USER nextjs
 
 EXPOSE 3100
@@ -200,8 +236,6 @@ CMD ["node", "server.js"]
 node_modules/
 .next/
 out/
-prisma/data.db
-public/uploads/
 .env
 .env.*
 .git/
@@ -226,41 +260,7 @@ export function GET() {
 
 ## 4. Kubernetes 매니페스트 (Istio + Argo Rollouts)
 
-### 4-1. PersistentVolume + PersistentVolumeClaim (EFS)
-
-```yaml
-# k8s/efs-pv.yaml
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: fassto-herald-efs-pv
-spec:
-  capacity:
-    storage: 5Gi
-  volumeMode: Filesystem
-  accessModes:
-    - ReadWriteOnce          # 단일 Pod만 쓰기 (SQLite)
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: efs-sc
-  csi:
-    driver: efs.csi.aws.com
-    volumeHandle: fs-xxxxxxxxx::fsap-xxxxxxxxx   # EFS ID::AccessPoint ID
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: herald-storage
-  namespace: fassto-herald
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: efs-sc
-  resources:
-    requests:
-      storage: 5Gi
-```
-
-### 4-2. App Argo Rollout + Service
+### 4-1. App Argo Rollout + Service
 
 ```yaml
 # k8s/app.yaml
@@ -270,7 +270,7 @@ metadata:
   name: app
   namespace: fassto-herald
 spec:
-  replicas: 1                # SQLite — 반드시 1개 유지
+  replicas: 1
   strategy:
     canary:
       canaryService: app-canary
@@ -282,7 +282,11 @@ spec:
               routes:
                 - app-route
       steps:
-        - setWeight: 100     # SQLite 단일 Pod이므로 즉시 전환
+        - setWeight: 20
+        - pause: { duration: 60s }
+        - setWeight: 50
+        - pause: { duration: 60s }
+        - setWeight: 100
         - pause: {}
   selector:
     matchLabels:
@@ -306,12 +310,19 @@ spec:
               value: "albert.rim@fassto.com"
             - name: SMTP_USER
               value: "albert.rim@fassto.com"
+            - name: ANTHROPIC_BASE_URL
+              value: "https://litellm.fassto.ai"
+            - name: ANTHROPIC_MODEL
+              value: "claude-opus-4-6"
+            - name: AWS_REGION
+              value: "ap-northeast-2"
+            - name: S3_BUCKET
+              value: "fassto-herald-uploads"
+            - name: S3_PREFIX
+              value: "uploads"
           envFrom:
             - secretRef:
                 name: herald-secrets
-          volumeMounts:
-            - name: storage
-              mountPath: /app/storage
           resources:
             requests:
               cpu: 100m
@@ -331,10 +342,6 @@ spec:
               port: 3100
             initialDelaySeconds: 5
             periodSeconds: 10
-      volumes:
-        - name: storage
-          persistentVolumeClaim:
-            claimName: herald-storage
 ---
 apiVersion: v1
 kind: Service
@@ -361,7 +368,7 @@ spec:
       targetPort: 3100
 ```
 
-### 4-3. Istio Gateway + VirtualService
+### 4-2. Istio Gateway + VirtualService
 
 ```yaml
 # k8s/istio.yaml
@@ -428,8 +435,8 @@ export function GET() {
 ```
 
 ```typescript
-// src/lib/prisma.ts — 운영 환경 DB 경로
-// EFS 마운트 경로: /app/storage/data.db
+// src/lib/prisma.ts — DATABASE_URL 환경변수로 RDS MySQL 연결
+// K8s Secret에서 DATABASE_URL 주입
 ```
 
 ### 5-2. 최초 배포
@@ -449,18 +456,22 @@ kubectl create namespace fassto-herald
 kubectl label ns fassto-herald istio-injection=enabled
 
 kubectl -n fassto-herald create secret generic herald-secrets \
+  --from-literal=DATABASE_URL='mysql://herald_admin:<비밀번호>@<RDS엔드포인트>:3306/herald' \
   --from-literal=NEXTAUTH_SECRET='<랜덤 64자>' \
   --from-literal=JIRA_API_TOKEN='<토큰>' \
   --from-literal=ANTHROPIC_API_KEY='<키>' \
   --from-literal=SLACK_BOT_TOKEN='<토큰>' \
   --from-literal=SMTP_PASS='<앱비밀번호>'
 
-kubectl apply -f k8s/efs-pv.yaml
+# IRSA 설정 (S3 접근용)
+kubectl -n fassto-herald annotate serviceaccount default \
+  eks.amazonaws.com/role-arn=arn:aws:iam::<ACCOUNT_ID>:role/fassto-herald-s3-role
+
 kubectl apply -f k8s/istio.yaml
 kubectl apply -f k8s/app.yaml
 
-# 3. DB 초기화 (Pod 내에서 실행)
-kubectl -n fassto-herald exec deploy/app -- npx prisma db push
+# 3. DB 마이그레이션 (Pod 내에서 실행)
+kubectl -n fassto-herald exec deploy/app -- npx prisma migrate deploy
 kubectl -n fassto-herald exec deploy/app -- npx tsx prisma/seed.ts
 ```
 
@@ -489,12 +500,18 @@ kubectl -n fassto-herald argo rollouts undo app
 
 | 변수 | 설명 | 소스 | 필수 |
 |------|------|------|------|
+| `DATABASE_URL` | RDS MySQL 연결 문자열 | K8s Secret | O |
 | `NEXTAUTH_SECRET` | Auth.js 시크릿 키 (64자+) | K8s Secret | O |
 | `NEXTAUTH_URL` | 서비스 URL | env | O |
 | `JIRA_BASE_URL` | Atlassian Cloud URL | env | O |
 | `JIRA_API_TOKEN` | JIRA API 토큰 | K8s Secret | O |
 | `JIRA_USER_EMAIL` | JIRA 서비스 계정 이메일 | env | O |
 | `ANTHROPIC_API_KEY` | Anthropic API 키 | K8s Secret | O |
+| `ANTHROPIC_BASE_URL` | Anthropic/LiteLLM 프록시 URL | env | O |
+| `ANTHROPIC_MODEL` | AI 모델명 | env | O |
+| `AWS_REGION` | AWS 리전 | env | O |
+| `S3_BUCKET` | S3 버킷명 | env | O |
+| `S3_PREFIX` | S3 키 프리픽스 | env | O |
 | `SLACK_BOT_TOKEN` | Slack Bot 토큰 | K8s Secret | O |
 | `SMTP_USER` | Gmail 계정 | env | O |
 | `SMTP_PASS` | Gmail 앱 비밀번호 | K8s Secret | O |
@@ -503,8 +520,10 @@ kubectl -n fassto-herald argo rollouts undo app
 
 | 서비스 | 도메인 | 용도 |
 |--------|--------|------|
+| RDS MySQL | `<RDS엔드포인트>:3306` | 데이터베이스 (VPC 내부) |
+| S3 | `s3.ap-northeast-2.amazonaws.com` | 스크린샷 업로드 (HTTPS) |
 | JIRA | `fssuniverse.atlassian.net` | Release Note 티켓 조회 |
-| Anthropic | `api.anthropic.com` | AI 텍스트 변환 |
+| LiteLLM (Anthropic) | `litellm.fassto.ai` | AI 텍스트 변환 |
 | Slack | `slack.com` | 메시지 조회, 요청자 추출 |
 | Gmail SMTP | `smtp.gmail.com:587` | 이메일 발송 |
 
@@ -512,13 +531,21 @@ kubectl -n fassto-herald argo rollouts undo app
 
 ## 7. 백업 전략
 
-### EFS 자동 백업 (권장)
+### RDS 자동 백업 (기본 활성화)
 
 ```
-AWS Backup:
-  - EFS 파일시스템에 대한 자동 백업 계획 생성
-  - 주기: 매일 1회
-  - 보존: 30일
+RDS 자동 백업:
+  - 보존 기간: 7일
+  - 백업 윈도우: 18:00-19:00 UTC (KST 03:00-04:00)
+  - 스냅샷 수동 생성: 주요 배포 전 권장
+```
+
+### S3 수명 주기 (선택)
+
+```
+S3 Lifecycle Rule:
+  - 대상: uploads/ 프리픽스
+  - 180일 후 자동 삭제 (오래된 스크린샷 정리)
 ```
 
 ---
@@ -596,7 +623,7 @@ spec:
     port: 3100
   replicas:
     min: 0                       # 유휴 시 0개
-    max: 1                       # SQLite — 최대 1개
+    max: 2                       # 최대 2개 (RDS이므로 스케일링 자유)
   scalingMetric:
     requestRate:
       targetValue: 1             # 요청 1개 이상이면 스케일 업
@@ -681,8 +708,8 @@ kubectl -n fassto-herald argo rollouts set replicas app 0
 | 메모리 (requests) | 256Mi × 168h | 256Mi × ~3h |
 | **절감률** | — | **~98%** |
 
-> **참고**: EFS 비용은 저장 용량 기준이므로 Scale-to-Zero와 무관하게 동일합니다.
-> 다만 SQLite + 스크린샷 저장이므로 EFS 비용 자체가 미미합니다 (GB당 $0.30/월).
+> **참고**: RDS 비용은 인스턴스 가동 시간 기준이므로 Scale-to-Zero와 무관하게 동일합니다.
+> S3는 스크린샷 저장 용도로 비용이 미미합니다 (GB당 $0.023/월).
 
 ---
 
@@ -691,13 +718,16 @@ kubectl -n fassto-herald argo rollouts set replicas app 0
 ### 배포 전 — AWS 관리자
 
 - [ ] ECR: 리포지토리 `fassto-herald` 생성
-- [ ] EFS: 파일시스템 및 액세스 포인트 생성
+- [ ] RDS: MySQL 8.0 인스턴스 생성 (`herald` DB, `herald_admin` 사용자)
+- [ ] RDS: 보안그룹 `rds-herald-sg` 생성 (EKS 노드 → 3306 허용)
+- [ ] S3: 버킷 `fassto-herald-uploads` 생성 (퍼블릭 GetObject 허용)
+- [ ] IAM: IRSA 역할 `fassto-herald-s3-role` 생성 (S3 PutObject/DeleteObject)
 - [ ] EKS: 네임스페이스 `fassto-herald` 생성 + Istio sidecar injection 활성화
-- [ ] EKS: EFS CSI Driver, Istio, Argo Rollouts Controller 설치 확인
+- [ ] EKS: Istio, Argo Rollouts Controller 설치 확인
 - [ ] EKS: KEDA + KEDA HTTP Add-on 설치 (Scale-to-Zero용)
 - [ ] ALB: Istio IngressGateway 연결 (HTTPS→HTTP 종료)
 - [ ] Route 53: `herald.fassto.ai` A 레코드 → ALB
-- [ ] 보안그룹: EKS 노드 → EFS NFS(2049) 허용
+- [ ] 보안그룹: EKS 노드 → RDS 3306, HTTPS 443 허용
 - [ ] ACM: `herald.fassto.ai` SSL 인증서
 
 ### 배포 전 — 개발자
@@ -716,6 +746,7 @@ kubectl -n fassto-herald argo rollouts set replicas app 0
 - [ ] 로그인 정상 동작
 - [ ] JIRA 릴리즈 URL → 초안 생성 동작
 - [ ] 이메일 발송 동작
-- [ ] 스크린샷 업로드 → EFS 영속 확인 (Pod 재시작 후 파일 존재 여부)
-- [ ] EFS 백업 계획 설정
+- [ ] 스크린샷 업로드 → S3 저장 확인 (이메일 내 이미지 표시 확인)
+- [ ] RDS 연결 및 마이그레이션 확인
+- [ ] RDS 자동 백업 활성화 확인
 - [ ] Scale-to-Zero 동작 확인 (5분 유휴 후 Pod 0개 → 재접속 시 자동 기동)

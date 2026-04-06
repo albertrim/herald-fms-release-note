@@ -1,9 +1,14 @@
 import { generateText } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { v4 as uuidv4 } from "uuid";
 import type { JiraTicket, NoticeItem } from "@/types";
 
-const AI_MODEL = anthropic("claude-sonnet-4-20250514");
+const anthropic = createAnthropic({
+  baseURL: process.env.ANTHROPIC_BASE_URL,
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+const AI_MODEL = anthropic(process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514");
 
 export interface IAiTransformService {
   transformTickets(tickets: JiraTicket[]): Promise<NoticeItem[]>;
