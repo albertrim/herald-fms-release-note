@@ -24,20 +24,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  events: {
+    async createUser({ user }) {
+      if (user.id && user.name) {
+        const name = user.name.replace(/\(.*\)$/, "").trim();
+        if (name !== user.name) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { name },
+          });
+        }
+      }
+    },
+  },
   callbacks: {
-    async signIn({ account, profile, user }) {
+    async signIn({ account, profile }) {
       if (account?.provider !== "google") return false;
       const email = profile?.email ?? "";
       if (!email.endsWith("@fassto.com")) return false;
-
-      if (profile?.name && user?.id) {
-        const name = profile.name.replace(/\(.*\)$/, "").trim();
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { name },
-        });
-      }
-
       return true;
     },
     async session({ session, user }) {
