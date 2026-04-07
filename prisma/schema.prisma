@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -61,7 +61,7 @@ model SendHistory {
   senderName      String
   recipients      String   @db.Text // JSON array
   status          String   // "SUCCESS" | "FAILED"
-  contentSnapshot String   @db.LongText // JSON
+  contentSnapshot String   @db.Text // JSON
   sourceUrls      String   @db.Text // JSON array
   sentAt          DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id])
