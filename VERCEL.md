@@ -60,7 +60,7 @@ Vercel Dashboard > Settings > Environment Variables:
 | `JIRA_USER_EMAIL` | `albert.rim@fassto.com` | |
 | `ANTHROPIC_API_KEY` | Anthropic API 키 | |
 | `ANTHROPIC_BASE_URL` | `https://litellm.fassto.ai` (선택) | |
-| `ANTHROPIC_MODEL` | `claude-opus-4-6` (선택) | |
+| `ANTHROPIC_MODEL` | `claude-opus-4-6` (선택, 기본: `claude-sonnet-4-20250514`) | |
 | `SLACK_BOT_TOKEN` | Slack Bot 토큰 | |
 
 ### 1-4. 도메인 설정
@@ -76,16 +76,24 @@ Vercel Dashboard > Settings > Domains:
 
 ## 2. 배포
 
+### 빌드 파이프라인
+
+```
+pnpm install → postinstall (prisma generate) → next build
+```
+
+`postinstall` 스크립트가 `prisma generate`를 자동 실행하므로 별도 설정 불필요.
+
 ### 2-1. 최초 배포
 
 ```bash
 # 1. 로컬에서 Vercel 환경변수 동기화
-npx vercel env pull .env.local
+vercel env pull .env.local
 
-# 2. Prisma 마이그레이션
-npx prisma migrate deploy
+# 2. DB 스키마 적용 (Neon에 테이블 생성)
+npx prisma db push
 
-# 3. 시드 데이터
+# 3. 시드 데이터 (카테고리 4개)
 npx tsx prisma/seed.ts
 
 # 4. 배포 (main 브랜치 push 시 자동 배포)
@@ -97,19 +105,25 @@ git push origin main
 `main` 브랜치에 push하면 자동 배포됩니다.
 PR 생성 시 Preview 배포가 자동으로 생성됩니다.
 
+### 2-3. DB 스키마 변경 시
+
+```bash
+# schema.prisma 수정 후
+npx prisma db push
+```
+
 ---
 
-## 3. 환경변수 목록
-
-### 외부 API 접근 (Outbound HTTPS)
+## 3. 외부 API 접근 (Outbound HTTPS)
 
 | 서비스 | 도메인 | 용도 |
 |--------|--------|------|
 | Neon PostgreSQL | `*.neon.tech` | 데이터베이스 |
 | JIRA | `fssuniverse.atlassian.net` | Release Note 티켓 조회 |
-| LiteLLM (Anthropic) | `litellm.fassto.ai` | AI 텍스트 변환 |
-| Slack | `slack.com` | 메시지 조회, 요청자 추출 |
-| Gmail API | `googleapis.com` | 이메일 발송 |
+| Anthropic (LiteLLM) | `litellm.fassto.ai` | AI 텍스트 변환 |
+| Slack | `slack.com` | 메시지 조회, 요청자 추출, 댓글 작성 |
+| Gmail API | `googleapis.com` | 이메일 발송 (사용자 OAuth 토큰) |
+| Vercel Blob | `*.public.blob.vercel-storage.com` | 스크린샷 업로드/조회 |
 
 ---
 
@@ -123,8 +137,8 @@ PR 생성 시 Preview 배포가 자동으로 생성됩니다.
 - [ ] 환경변수 설정 (위 표 참고)
 - [ ] Google OAuth 리디렉션 URI 추가: `https://herald.fassto.ai/api/auth/callback/google`
 - [ ] 도메인 설정: herald.fassto.ai (DNS CNAME → cname.vercel-dns.com)
-- [ ] Prisma 마이그레이션 실행
-- [ ] 시드 데이터 실행
+- [ ] `npx prisma db push` — Neon에 테이블 생성
+- [ ] `npx tsx prisma/seed.ts` — 시드 데이터
 
 ### 배포 후
 

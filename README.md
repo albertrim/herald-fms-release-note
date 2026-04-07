@@ -19,12 +19,14 @@ JIRA 릴리즈 URL을 입력하면 AI가 티켓을 분석하여 비개발자가 
 | 레이어 | 기술 |
 |--------|------|
 | Framework | Next.js 16 (App Router), React 19, TypeScript |
-| Database | SQLite (Prisma 5) |
+| Database | PostgreSQL (Neon via Vercel Marketplace, Prisma 5) |
 | Auth | Auth.js v5 (Google OAuth, @fassto.com 도메인 제한, DB 세션) |
-| AI | Vercel AI SDK + Anthropic Claude |
-| Email | Gmail API (googleapis, 로그인 사용자 계정에서 발송) |
-| UI | Tailwind CSS 4, lucide-react, @dnd-kit |
+| AI | Vercel AI SDK 6 + Anthropic Claude |
+| Email | Gmail API (googleapis, 로그인 사용자의 OAuth 토큰으로 발송) |
+| File Upload | Vercel Blob (스크린샷 업로드) |
+| UI | Tailwind CSS 4, lucide-react, @dnd-kit, Tiptap |
 | Slack | Slack Web API (conversations.history, users.info, chat.postMessage) |
+| Hosting | Vercel (서울 리전) |
 
 ## 시작하기
 
@@ -32,6 +34,7 @@ JIRA 릴리즈 URL을 입력하면 AI가 티켓을 분석하여 비개발자가 
 
 - Node.js 20+
 - pnpm
+- PostgreSQL (Neon 권장 — Vercel Marketplace에서 프로비저닝)
 - Google Cloud Console 프로젝트 (OAuth 클라이언트 ID + Gmail API 활성화)
 
 ### 설치
@@ -61,7 +64,9 @@ cp .env.example .env.local
 
 | 변수 | 설명 |
 |------|------|
-| `AUTH_SECRET` | Auth.js 시크릿 키 (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) |
+| `DATABASE_URL` | Neon PostgreSQL 연결 문자열 |
+| `NEXTAUTH_SECRET` | Auth.js 시크릿 키 (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) |
+| `NEXTAUTH_URL` | Auth 콜백 URL (로컬: `http://localhost:3100`) |
 | `GOOGLE_CLIENT_ID` | Google OAuth 클라이언트 ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth 클라이언트 보안 비밀번호 |
 | `JIRA_BASE_URL` | Atlassian Cloud URL (예: `https://company.atlassian.net`) |
@@ -69,6 +74,7 @@ cp .env.example .env.local
 | `JIRA_USER_EMAIL` | JIRA 서비스 계정 이메일 |
 | `ANTHROPIC_API_KEY` | Anthropic API 키 |
 | `SLACK_BOT_TOKEN` | Slack Bot Token (`xoxb-...`) |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob 토큰 (Vercel Marketplace에서 자동 주입) |
 
 ### DB 초기화
 
@@ -110,17 +116,16 @@ src/
 │   │   ├── notice/      # URL 입력, 초안 편집, 이메일 발송
 │   │   └── history/     # 발송 이력 상세, 재발송, 삭제
 │   └── api/             # REST API 엔드포인트
-├── components/          # UI 컴포넌트
+├── components/          # UI 컴포넌트 (notice, email, layout, ui)
 ├── services/            # 비즈니스 로직 (JIRA, AI, Email, Slack)
 ├── email-templates/     # 이메일 HTML 템플릿
-├── lib/                 # 인프라 (auth, prisma, utils, 디자인 토큰)
+├── lib/                 # 인프라 (auth, prisma, storage, utils)
 ├── proxy.ts             # Next.js 16 라우팅 프록시 (인증 체크)
 └── types/               # TypeScript 타입 정의
 
 prisma/
-├── schema.prisma        # DB 스키마
-├── seed.ts              # 초기 데이터
-└── data.db              # SQLite 데이터베이스 (자동 생성)
+├── schema.prisma        # DB 스키마 (PostgreSQL)
+└── seed.ts              # 초기 데이터 (카테고리)
 ```
 
 ## 사용 흐름
