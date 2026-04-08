@@ -65,6 +65,9 @@ model SendHistory {
   sourceUrls      String   @db.Text // JSON array
   sentAt          DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, sentAt(sort: Desc)])
+  @@index([userId, status, sentAt(sort: Desc)])
 }
 
 model RecipientHistory {
