@@ -88,8 +88,8 @@ async function injectSession(
 
   const user = await prisma.user.upsert({
     where: { email: "albert.rim@fassto.com" },
-    update: { name: "Albert Rim" },
-    create: { email: "albert.rim@fassto.com", name: "Albert Rim" },
+    update: {},
+    create: { email: "albert.rim@fassto.com", name: "임종균" },
   });
 
   await prisma.session.create({
@@ -142,11 +142,6 @@ async function seedCategories() {
 }
 
 async function seedHistory(userId: string) {
-  // 기존 테스트 이력 정리
-  await prisma.sendHistory.deleteMany({
-    where: { userId, title: { startsWith: "[공지]" } },
-  });
-
   const histories = [
     {
       userId,

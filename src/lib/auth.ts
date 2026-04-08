@@ -42,6 +42,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider !== "google") return false;
       const email = profile?.email ?? "";
       if (!email.endsWith("@fassto.com")) return false;
+
       return true;
     },
     async session({ session, user }) {
