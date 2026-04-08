@@ -7,12 +7,13 @@ export async function proxy(request: NextRequest) {
 
   const isAuthPage = pathname.startsWith("/login");
   const isApiAuth = pathname.startsWith("/api/auth");
+  const isPublicPage = pathname.startsWith("/manual");
 
   if (isApiAuth) return NextResponse.next();
 
   const session = await auth();
 
-  if (!session && !isAuthPage) {
+  if (!session && !isAuthPage && !isPublicPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

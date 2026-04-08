@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FASSTO Herald - 사용자 매뉴얼</title>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Pretendard', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #f8fafc, rgba(239,246,255,0.3), rgba(250,245,255,0.3));
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(229,231,235,0.6);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .header-inner {
+      max-width: 1024px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.5rem;
+    }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; }
+    .logo-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, #2563eb, #9333ea);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-text h1 { font-size: 1.125rem; font-weight: 700; color: #111827; line-height: 1.2; }
+    .logo-text p { font-size: 0.75rem; color: #6b7280; }
+    .back-link {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.875rem; color: #4b5563; text-decoration: none;
+      padding: 0.625rem 1rem; border-radius: 12px;
+      transition: background 0.15s;
+    }
+    .back-link:hover { background: #f3f4f6; }
+
+    /* Main */
+    main { max-width: 1024px; margin: 0 auto; padding: 3rem 1.5rem; }
+
+    .page-title { text-align: center; margin-bottom: 3rem; }
+    .page-title h2 { font-size: 1.875rem; font-weight: 700; color: #111827; }
+    .page-title p { margin-top: 0.75rem; font-size: 1.125rem; color: #4b5563; }
+
+    /* Workflow */
+    .workflow-card {
+      background: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.6);
+      border-radius: 24px; padding: 2rem; margin-bottom: 3rem;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05);
+      backdrop-filter: blur(4px);
+    }
+    .workflow-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; }
+    .workflow-steps { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.75rem; }
+    .workflow-step {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: linear-gradient(135deg, #eff6ff, #faf5ff);
+      padding: 0.625rem 1rem; border-radius: 12px;
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, #2563eb, #9333ea);
+      color: white; font-size: 0.75rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-label { font-size: 0.875rem; font-weight: 500; color: #374151; }
+    .step-arrow { color: #d1d5db; font-size: 1.25rem; }
+
+    /* Sections */
+    .sections { display: flex; flex-direction: column; gap: 4rem; }
+    .section-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+    .section-num {
+      width: 40px; height: 40px; border-radius: 16px;
+      background: linear-gradient(135deg, #2563eb, #9333ea);
+      color: white; font-size: 1.125rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      box-shadow: 0 10px 15px -3px rgba(37,99,235,0.2);
+    }
+    .section-header h3 { font-size: 1.5rem; font-weight: 700; color: #111827; }
+
+    .section-desc { color: #4b5563; line-height: 1.7; margin-bottom: 1.5rem; }
+
+    .screenshot {
+      border-radius: 16px; overflow: hidden;
+      border: 1px solid rgba(229,231,235,0.6);
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+    }
+    .screenshot img { width: 100%; display: block; }
+
+    .details {
+      background: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.6);
+      border-radius: 16px; padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      backdrop-filter: blur(4px);
+    }
+    .detail-list { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+    .detail-item { display: flex; align-items: flex-start; gap: 0.75rem; }
+    .detail-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: #dbeafe; color: #1d4ed8;
+      font-size: 0.75rem; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .detail-text { font-size: 0.875rem; line-height: 1.7; color: #374151; }
+
+    /* Footer CTA */
+    .footer-cta {
+      margin-top: 4rem; text-align: center;
+      border-radius: 24px; padding: 2rem;
+      background: linear-gradient(135deg, #eff6ff, #faf5ff);
+      border: 1px solid #bfdbfe;
+    }
+    .footer-cta p { font-size: 0.875rem; color: #4b5563; }
+    .cta-btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      margin-top: 1rem; padding: 0.75rem 1.5rem; border-radius: 16px;
+      background: linear-gradient(135deg, #2563eb, #9333ea);
+      color: white; font-size: 0.875rem; font-weight: 600;
+      text-decoration: none; box-shadow: 0 10px 15px -3px rgba(37,99,235,0.2);
+      transition: transform 0.15s;
+    }
+    .cta-btn:hover { transform: scale(1.02); }
+
+    @media (max-width: 640px) {
+      .workflow-steps { flex-direction: column; }
+      .step-arrow { transform: rotate(90deg); }
+      .header-inner { flex-direction: column; gap: 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M19 10h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M17 16l4-4-4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 12H9" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M9 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <h1>FASSTO Herald</h1>
+          <p>사용자 매뉴얼</p>
+        </div>
+      </div>
+      <a href="/login" class="back-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        로그인으로 돌아가기
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-title">
+      <h2>FASSTO Herald 사용자 매뉴얼</h2>
+      <p>JIRA 릴리즈 노트를 비개발자용 업데이트 공지로 변환하여 이메일로 발송하는 서비스입니다.</p>
+    </div>
+
+    <div class="workflow-card">
+      <h3>전체 워크플로우</h3>
+      <div class="workflow-steps">
+        <div class="workflow-step"><span class="step-num">1</span><span class="step-label">로그인</span></div>
+        <span class="step-arrow">&rarr;</span>
+        <div class="workflow-step"><span class="step-num">2</span><span class="step-label">JIRA URL 입력</span></div>
+        <span class="step-arrow">&rarr;</span>
+        <div class="workflow-step"><span class="step-num">3</span><span class="step-label">AI 초안 생성</span></div>
+        <span class="step-arrow">&rarr;</span>
+        <div class="workflow-step"><span class="step-num">4</span><span class="step-label">초안 편집</span></div>
+        <span class="step-arrow">&rarr;</span>
+        <div class="workflow-step"><span class="step-num">5</span><span class="step-label">이메일 발송</span></div>
+      </div>
+    </div>
+
+    <div class="sections">
+      <!-- Step 1: Login -->
+      <section>
+        <div class="section-header">
+          <span class="section-num">1</span>
+          <h3>로그인</h3>
+        </div>
+        <p class="section-desc">Google 계정으로 로그인합니다. @fassto.com 도메인 계정만 사용 가능합니다.</p>
+        <div class="screenshot"><img src="/manual/01-login.png" alt="로그인 화면" /></div>
+        <div class="details">
+          <ul class="detail-list">
+            <li class="detail-item"><span class="detail-num">1</span><span class="detail-text">'Google 계정으로 로그인' 버튼을 클릭합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">2</span><span class="detail-text">Google 계정 선택 화면에서 @fassto.com 계정을 선택합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">3</span><span class="detail-text">로그인 성공 시 대시보드로 이동합니다.</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Step 2: Dashboard -->
+      <section>
+        <div class="section-header">
+          <span class="section-num">2</span>
+          <h3>대시보드</h3>
+        </div>
+        <p class="section-desc">대시보드에서 새 공지를 생성하거나, 이전 발송 이력을 확인할 수 있습니다.</p>
+        <div class="screenshot"><img src="/manual/02-dashboard.png" alt="대시보드 화면" /></div>
+        <div class="details">
+          <ul class="detail-list">
+            <li class="detail-item"><span class="detail-num">1</span><span class="detail-text">'새 공지 생성' 버튼을 클릭하여 공지 작성을 시작합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">2</span><span class="detail-text">발송 이력 테이블에서 이전에 발송한 공지를 확인할 수 있습니다.</span></li>
+            <li class="detail-item"><span class="detail-num">3</span><span class="detail-text">이력 행을 클릭하면 상세 내용을 확인하고 재발송할 수 있습니다.</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Step 3: JIRA URL Input -->
+      <section>
+        <div class="section-header">
+          <span class="section-num">3</span>
+          <h3>JIRA 릴리즈 URL 입력</h3>
+        </div>
+        <p class="section-desc">공지를 생성할 JIRA Release Note의 URL을 입력합니다. FMS, OMS 등 여러 프로젝트의 URL을 동시에 입력할 수 있습니다.</p>
+        <div class="screenshot"><img src="/manual/03-url-input.png" alt="JIRA URL 입력 화면" /></div>
+        <div class="details">
+          <ul class="detail-list">
+            <li class="detail-item"><span class="detail-num">1</span><span class="detail-text">JIRA Release Note 페이지의 URL을 복사하여 입력합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">2</span><span class="detail-text">URL 형식: https://jira.company.com/projects/PROJECT/versions/12345</span></li>
+            <li class="detail-item"><span class="detail-num">3</span><span class="detail-text">'URL 추가' 버튼으로 추가 URL을 입력할 수 있습니다.</span></li>
+            <li class="detail-item"><span class="detail-num">4</span><span class="detail-text">'초안 생성' 버튼을 클릭하면 AI가 JIRA 티켓을 분석하여 비개발자용 공지 초안을 자동 생성합니다.</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Step 4: Draft Edit -->
+      <section>
+        <div class="section-header">
+          <span class="section-num">4</span>
+          <h3>공지 초안 편집</h3>
+        </div>
+        <p class="section-desc">AI가 생성한 초안을 검토하고 편집합니다. 항목의 순서 변경, 내용 수정, 카테고리 지정, 스크린샷 첨부, 항목 병합 등이 가능합니다.</p>
+        <div class="screenshot"><img src="/manual/04-draft-edit.png" alt="초안 편집 화면" /></div>
+        <div class="details">
+          <ul class="detail-list">
+            <li class="detail-item"><span class="detail-num">1</span><span class="detail-text">드래그 핸들(좌측 아이콘)을 잡고 끌어서 항목 순서를 변경합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">2</span><span class="detail-text">연필 아이콘을 클릭하여 제목과 설명을 직접 수정합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">3</span><span class="detail-text">카테고리 드롭다운에서 '신규 기능', '기능 개선', '버그 수정' 등을 선택합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">4</span><span class="detail-text">이미지 아이콘을 클릭하여 스크린샷을 첨부할 수 있습니다.</span></li>
+            <li class="detail-item"><span class="detail-num">5</span><span class="detail-text">체크박스로 여러 항목을 선택한 후 '선택 항목 병합' 버튼으로 합칠 수 있습니다.</span></li>
+            <li class="detail-item"><span class="detail-num">6</span><span class="detail-text">편집이 완료되면 '이메일 발송 준비' 버튼을 클릭합니다.</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Step 5: Send -->
+      <section>
+        <div class="section-header">
+          <span class="section-num">5</span>
+          <h3>이메일 발송 준비</h3>
+        </div>
+        <p class="section-desc">이메일 제목, 수신자를 설정하고 미리보기를 확인한 후 발송합니다.</p>
+        <div class="screenshot"><img src="/manual/05-send-preview.png" alt="발송 준비 화면" /></div>
+        <div class="details">
+          <ul class="detail-list">
+            <li class="detail-item"><span class="detail-num">1</span><span class="detail-text">이메일 제목을 확인하고 필요시 수정합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">2</span><span class="detail-text">수신자 이메일을 입력합니다. 이전 발송 이력의 수신자가 자동으로 채워집니다.</span></li>
+            <li class="detail-item"><span class="detail-num">3</span><span class="detail-text">이메일 입력 시 자동완성이 지원됩니다. 콤마(,)로 여러 명을 구분할 수 있습니다.</span></li>
+            <li class="detail-item"><span class="detail-num">4</span><span class="detail-text">우측 미리보기에서 수신자에게 전달될 최종 모습을 확인합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">5</span><span class="detail-text">Slack 연동 옵션을 체크하면 각 JIRA 티켓의 Slack 스레드에 배포 완료 댓글이 자동 작성됩니다.</span></li>
+            <li class="detail-item"><span class="detail-num">6</span><span class="detail-text">'이메일 발송하기' 버튼을 클릭하여 발송합니다.</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Step 6: History Detail -->
+      <section>
+        <div class="section-header">
+          <span class="section-num">6</span>
+          <h3>발송 이력 상세 / 재발송</h3>
+        </div>
+        <p class="section-desc">이전에 발송한 공지의 상세 내용을 확인하고, 수신자를 변경하여 재발송할 수 있습니다.</p>
+        <div class="screenshot"><img src="/manual/06-history-detail.png" alt="발송 이력 상세 화면" /></div>
+        <div class="details">
+          <ul class="detail-list">
+            <li class="detail-item"><span class="detail-num">1</span><span class="detail-text">대시보드 발송 이력에서 항목을 클릭하면 상세 페이지로 이동합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">2</span><span class="detail-text">발송일시, 발신자, 수신자 수, 발송 상태를 확인할 수 있습니다.</span></li>
+            <li class="detail-item"><span class="detail-num">3</span><span class="detail-text">수신자 목록을 수정하고 '재발송' 버튼을 클릭하면 동일 내용을 다시 발송합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">4</span><span class="detail-text">'삭제' 버튼으로 발송 이력을 삭제할 수 있습니다.</span></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <div class="footer-cta">
+      <p>문의사항이 있으시면 IT개발본부 담당자에게 Slack DM으로 연락해주세요.</p>
+      <a href="/login" class="cta-btn">서비스 시작하기</a>
+    </div>
+  </main>
+</body>
+</html>

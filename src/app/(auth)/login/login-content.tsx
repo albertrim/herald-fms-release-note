@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, BookOpen } from "lucide-react";
 import { useState } from "react";
 
 export default function LoginContent() {
@@ -72,9 +72,18 @@ export default function LoginContent() {
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-sm text-gray-500">
-          @fassto.com 계정으로만 로그인할 수 있습니다.
-        </p>
+        <div className="mt-6 space-y-3 text-center">
+          <p className="text-sm text-gray-500">
+            @fassto.com 계정으로만 로그인할 수 있습니다.
+          </p>
+          <a
+            href="/manual/index.html"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-blue-600"
+          >
+            <BookOpen className="h-4 w-4" />
+            사용자 매뉴얼
+          </a>
+        </div>
       </div>
     </div>
   );
