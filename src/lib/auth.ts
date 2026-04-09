@@ -19,7 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           scope:
             "openid email profile https://www.googleapis.com/auth/gmail.send",
           access_type: "offline",
-          prompt: "select_account",
+          prompt: "consent",
         },
       },
     }),
@@ -42,6 +42,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider !== "google") return false;
       const email = profile?.email ?? "";
       if (!email.endsWith("@fassto.com")) return false;
+
+      // 매 로그인마다 OAuth 토큰을 DB에 갱신 (PrismaAdapter는 최초 linkAccount만 처리)
+      if (account.providerAccountId) {
+        const data: { access_token?: string; expires_at?: number; refresh_token?: string } = {};
+        if (account.access_token) data.access_token = account.access_token;
+        if (account.expires_at) data.expires_at = account.expires_at;
+        if (account.refresh_token) data.refresh_token = account.refresh_token;
+
+        if (Object.keys(data).length > 0) {
+          await prisma.account.updateMany({
+            where: {
+              provider: "google",
+              providerAccountId: account.providerAccountId,
+            },
+            data,
+          });
+        }
+      }
 
       return true;
     },
