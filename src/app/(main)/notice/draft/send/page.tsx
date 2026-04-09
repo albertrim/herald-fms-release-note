@@ -14,6 +14,8 @@ import type {
   RecipientSuggestion,
 } from "@/types";
 
+const DEFAULT_RECIPIENTS = ["all@fassto.com", "cs0002@fassto.com"];
+
 export default function SendPage() {
   const router = useRouter();
   const [draft, setDraft] = useState<DraftNotice | null>(null);
@@ -21,7 +23,7 @@ export default function SendPage() {
   const defaultTitle = `[공지] ${formatKoreanDate()}, FMS 업데이트 안내`;
   const [title, setTitle] = useState(defaultTitle);
   const senderName = "IT개발본부";
-  const [recipients, setRecipients] = useState<string[]>([]);
+  const [recipients, setRecipients] = useState<string[]>(DEFAULT_RECIPIENTS);
   const [loading, setLoading] = useState(false);
   const [sendSlackNotice, setSendSlackNotice] = useState(true);
 
@@ -39,7 +41,13 @@ export default function SendPage() {
   useEffect(() => {
     fetch("/api/categories").then((r) => r.json()).then((d) => setCategories(d.categories || []));
     fetch("/api/history").then((r) => r.json()).then((d) => {
-      if (d.lastRecipients?.length > 0) setRecipients(d.lastRecipients);
+      if (d.lastRecipients?.length > 0) {
+        const merged = [...DEFAULT_RECIPIENTS];
+        for (const email of d.lastRecipients as string[]) {
+          if (!merged.includes(email)) merged.push(email);
+        }
+        setRecipients(merged);
+      }
     });
   }, []);
 
