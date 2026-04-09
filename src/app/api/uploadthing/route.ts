@@ -47,7 +47,8 @@ export async function POST(request: Request) {
     const url = await upload(key, buffer, file.type);
 
     return NextResponse.json({ url });
-  } catch {
+  } catch (error) {
+    console.error("[UPLOAD_FAILED]", error);
     return NextResponse.json(
       { error: "UPLOAD_FAILED", message: "파일 업로드에 실패했습니다." },
       { status: 500 }
