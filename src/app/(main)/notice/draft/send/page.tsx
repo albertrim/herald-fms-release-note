@@ -14,7 +14,7 @@ import type {
   RecipientSuggestion,
 } from "@/types";
 
-const DEFAULT_RECIPIENTS = ["all@fassto.com", "cs0002@fassto.com"];
+const DEFAULT_RECIPIENTS = ["all@fassto.com", "cs002@fassto.com"];
 
 export default function SendPage() {
   const router = useRouter();
