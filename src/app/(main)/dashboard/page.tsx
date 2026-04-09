@@ -10,13 +10,11 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  const [session, params] = await Promise.all([auth(), searchParams]);
+  const [, params] = await Promise.all([auth(), searchParams]);
   const page = Math.max(1, Number(params.page) || 1);
-  const userId = session!.user!.id!;
 
   const [histories, totalCount] = await Promise.all([
     prisma.sendHistory.findMany({
-      where: { userId },
       orderBy: { sentAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -29,7 +27,7 @@ export default async function DashboardPage({
         sentAt: true,
       },
     }),
-    prisma.sendHistory.count({ where: { userId } }),
+    prisma.sendHistory.count(),
   ]);
 
   const items: SendHistoryListItem[] = histories.map((h) => ({

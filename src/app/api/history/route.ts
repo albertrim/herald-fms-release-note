@@ -16,11 +16,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
 
-  const userId = session.user.id;
-
   const [histories, totalCount, latestSuccess] = await Promise.all([
     prisma.sendHistory.findMany({
-      where: { userId },
       orderBy: { sentAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -33,11 +30,11 @@ export async function GET(request: NextRequest) {
         sentAt: true,
       },
     }),
-    prisma.sendHistory.count({ where: { userId } }),
-    // 첫 페이지에서만 lastRecipients 조회
+    prisma.sendHistory.count(),
+    // 첫 페이지에서만 lastRecipients 조회 (현재 사용자 기준)
     page === 1
       ? prisma.sendHistory.findFirst({
-          where: { userId, status: "SUCCESS" },
+          where: { userId: session.user.id, status: "SUCCESS" },
           orderBy: { sentAt: "desc" },
           select: { recipients: true },
         })
