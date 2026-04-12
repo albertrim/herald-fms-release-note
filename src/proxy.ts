@@ -7,7 +7,7 @@ export async function proxy(request: NextRequest) {
 
   const isAuthPage = pathname.startsWith("/login");
   const isApiAuth = pathname.startsWith("/api/auth");
-  const isPublicPage = pathname.startsWith("/manual");
+  const isPublicPage = pathname.startsWith("/manual") || pathname.startsWith("/docs");
 
   if (isApiAuth) return NextResponse.next();
 

@@ -69,9 +69,9 @@ cp .env.example .env.local
 | `NEXTAUTH_URL` | Auth 콜백 URL (로컬: `http://localhost:3100`) |
 | `GOOGLE_CLIENT_ID` | Google OAuth 클라이언트 ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth 클라이언트 보안 비밀번호 |
-| `JIRA_BASE_URL` | Atlassian Cloud URL (예: `https://company.atlassian.net`) |
+| `JIRA_BASE_URL` | Atlassian Cloud URL (예: `https://your-org.atlassian.net`) |
 | `JIRA_API_TOKEN` | JIRA API 토큰 |
-| `JIRA_USER_EMAIL` | JIRA 서비스 계정 이메일 |
+| `JIRA_USER_EMAIL` | JIRA 서비스 계정 이메일 (예: `your-email@company.com`) |
 | `ANTHROPIC_API_KEY` | Anthropic API 키 |
 | `SLACK_BOT_TOKEN` | Slack Bot Token (`xoxb-...`) |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob 토큰 (Vercel Marketplace에서 자동 주입) |
@@ -160,6 +160,10 @@ Slack 메시지에서 요청자 이름을 추출하려면 Bot에 아래 OAuth sc
 
 - `SLACK_BOT_TOKEN`이 시스템 환경변수에 설정되어 있으면 `.env.local` 값보다 우선합니다. 의도치 않은 토큰 사용을 방지하려면 시스템 환경변수에 `SLACK_BOT_TOKEN`이 없는지 확인하세요.
 - Bot이 메시지가 있는 채널에 참여되어 있어야 합니다. `channels:join` 스코프가 있으면 자동으로 참여합니다.
+
+## 개발 가이드
+
+이 프로젝트가 어떻게 개발되었는지 궁금하다면 [바이브로 Herald 개발기](/docs/development-guide.html)를 참고하세요. Claude Code + [Speckit](https://github.com/speckai/speckit) 워크플로우로 9일 만에 프로덕션 서비스를 만든 과정을 공유합니다.
 
 ## 대상 사용자
 

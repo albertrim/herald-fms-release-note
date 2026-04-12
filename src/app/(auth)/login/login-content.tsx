@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { AlertCircle, Loader2, BookOpen } from "lucide-react";
+import { AlertCircle, Loader2, BookOpen, Code2 } from "lucide-react";
 import { useState } from "react";
 
 export default function LoginContent() {
@@ -72,17 +72,28 @@ export default function LoginContent() {
         </div>
 
         {/* Footer */}
-        <div className="mt-6 space-y-3 text-center">
+        <div className="mt-6 space-y-2 text-center">
           <p className="text-sm text-gray-500">
             @fassto.com 계정으로만 로그인할 수 있습니다.
           </p>
-          <a
-            href="/manual/index.html"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-blue-600"
-          >
-            <BookOpen className="h-4 w-4" />
-            사용자 매뉴얼
-          </a>
+          <div className="flex flex-col items-center gap-1.5">
+            <a
+              href="/manual/index.html"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-blue-600"
+            >
+              <BookOpen className="h-4 w-4" />
+              사용자 매뉴얼
+            </a>
+            <a
+              href="/docs/development-guide.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-purple-600"
+            >
+              <Code2 className="h-4 w-4" />
+              바이브로 Herald 개발기
+            </a>
+          </div>
         </div>
       </div>
     </div>
