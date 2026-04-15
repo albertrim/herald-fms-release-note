@@ -61,8 +61,17 @@ export class JiraService implements IJiraService {
       if (response.status === 404) {
         throw new JiraError("RELEASE_NOT_FOUND", "해당 Release를 찾을 수 없습니다.");
       }
-      if (response.status === 401 || response.status === 403) {
-        throw new JiraError("JIRA_AUTH_FAILED", "JIRA 인증에 실패했습니다. API 토큰을 확인해주세요.");
+      if (response.status === 401) {
+        throw new JiraError(
+          "JIRA_AUTH_FAILED",
+          "JIRA API 인증에 실패했습니다. API 토큰이 만료되었거나 유효하지 않을 수 있습니다. Atlassian 계정에서 API 토큰 유효성을 확인해주세요."
+        );
+      }
+      if (response.status === 403) {
+        throw new JiraError(
+          "JIRA_AUTH_FAILED",
+          "JIRA API 접근 권한이 없습니다. API 토큰 계정이 해당 프로젝트에 권한이 있는지 확인해주세요."
+        );
       }
       throw new JiraError(
         "JIRA_CONNECTION_FAILED",
@@ -138,6 +147,18 @@ export class JiraService implements IJiraService {
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "");
+      if (response.status === 401) {
+        throw new JiraError(
+          "JIRA_AUTH_FAILED",
+          "JIRA API 인증에 실패했습니다. API 토큰이 만료되었거나 유효하지 않을 수 있습니다. Atlassian 계정에서 API 토큰 유효성을 확인해주세요."
+        );
+      }
+      if (response.status === 403) {
+        throw new JiraError(
+          "JIRA_AUTH_FAILED",
+          "JIRA API 접근 권한이 없습니다. API 토큰 계정이 해당 프로젝트에 권한이 있는지 확인해주세요."
+        );
+      }
       if (response.status === 404) {
         throw new JiraError("RELEASE_NOT_FOUND", "해당 Release를 찾을 수 없습니다.");
       }
