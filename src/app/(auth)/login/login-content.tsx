@@ -13,7 +13,9 @@ export default function LoginContent() {
   async function handleGoogleSignIn() {
     setLoading(true);
     try {
-      await signIn("google", { callbackUrl: "/dashboard" });
+      // ConsentRequired: refresh_token이 DB에 없어 재동의 필요
+      const needsConsent = error === "ConsentRequired";
+      await signIn("google", { callbackUrl: "/dashboard" }, needsConsent ? { prompt: "consent" } : {});
     } catch {
       setLoading(false);
     }
@@ -48,6 +50,12 @@ export default function LoginContent() {
             <div className="mb-5 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
               <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
               <p className="text-sm text-red-700">@fassto.com 계정만 사용할 수 있습니다.</p>
+            </div>
+          )}
+          {error === "ConsentRequired" && (
+            <div className="mb-5 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-500" />
+              <p className="text-sm text-amber-700">이메일 발송 권한이 필요합니다. 아래 버튼을 클릭하여 권한을 허용해주세요.</p>
             </div>
           )}
 

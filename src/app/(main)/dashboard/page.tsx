@@ -1,4 +1,3 @@
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DashboardClient } from "./dashboard-client";
 import type { SendHistoryListItem } from "@/types";
@@ -10,7 +9,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  const [, params] = await Promise.all([auth(), searchParams]);
+  const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
 
   const [histories, totalCount] = await Promise.all([

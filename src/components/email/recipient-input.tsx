@@ -18,11 +18,7 @@ export function RecipientInput({ recipients, onChange }: RecipientInputProps) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
-    if (query.length < 1) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSuggestions([]);
-      return;
-    }
+    if (query.length < 1) return;
 
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -39,14 +35,23 @@ export function RecipientInput({ recipients, onChange }: RecipientInputProps) {
         setShowSuggestions(true);
       }
     }, 300);
+
+    return () => clearTimeout(debounceRef.current);
   }, [query, recipients]);
+
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    if (value.length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }
 
   function addRecipient(email: string) {
     if (!recipients.includes(email) && isValidEmail(email)) {
       onChange([...recipients, email]);
     }
-    setQuery("");
-    setShowSuggestions(false);
+    handleQueryChange("");
   }
 
   function removeRecipient(email: string) {
@@ -79,7 +84,7 @@ export function RecipientInput({ recipients, onChange }: RecipientInputProps) {
       <Input
         placeholder="수신자 이메일 입력 후 Enter"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => handleQueryChange(e.target.value)}
         onKeyDown={handleKeyDown}
         onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}

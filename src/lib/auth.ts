@@ -19,7 +19,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           scope:
             "openid email profile https://www.googleapis.com/auth/gmail.send",
           access_type: "offline",
-          prompt: "consent",
+          // prompt을 지정하지 않으면 Google이 자체적으로 최초 1회만 동의 화면 표시
+          // refresh_token이 없을 때만 동의가 필요하므로 클라이언트에서 동적으로 처리
         },
       },
     }),
@@ -43,11 +44,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const email = profile?.email ?? "";
       if (!email.endsWith("@fassto.com")) return false;
 
-      // 매 로그인마다 OAuth 토큰을 DB에 갱신 (PrismaAdapter는 최초 linkAccount만 처리)
       if (account.providerAccountId) {
+        // DB에 기존 refresh_token이 있는지 확인
+        const existing = await prisma.account.findFirst({
+          where: { provider: "google", providerAccountId: account.providerAccountId },
+          select: { refresh_token: true },
+        });
+        const hasExistingRefreshToken = !!existing?.refresh_token;
+
+        // refresh_token이 없고 DB에도 없으면 재동의 필요 → 거부 후 consent 파라미터로 리다이렉트
+        if (!account.refresh_token && !hasExistingRefreshToken) {
+          return "/login?error=ConsentRequired";
+        }
+
         const data: { access_token?: string; expires_at?: number; refresh_token?: string } = {};
         if (account.access_token) data.access_token = account.access_token;
         if (account.expires_at) data.expires_at = account.expires_at;
+        // 새 refresh_token이 발급된 경우에만 갱신 (재동의 없이 로그인 시 undefined)
         if (account.refresh_token) data.refresh_token = account.refresh_token;
 
         if (Object.keys(data).length > 0) {
