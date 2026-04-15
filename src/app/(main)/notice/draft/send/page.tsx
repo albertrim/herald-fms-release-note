@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Send, Sparkles, X, Loader2, CheckCircle } from "lucide-react";
@@ -39,11 +39,14 @@ export default function SendPage() {
   }, [router]);
 
   useEffect(() => {
-    fetch("/api/categories").then((r) => r.json()).then((d) => setCategories(d.categories || []));
-    fetch("/api/history").then((r) => r.json()).then((d) => {
-      if (d.lastRecipients?.length > 0) {
+    Promise.all([
+      fetch("/api/categories").then((r) => r.json()),
+      fetch("/api/history").then((r) => r.json()),
+    ]).then(([catData, histData]) => {
+      setCategories(catData.categories || []);
+      if (histData.lastRecipients?.length > 0) {
         const merged = [...DEFAULT_RECIPIENTS];
-        for (const email of d.lastRecipients as string[]) {
+        for (const email of histData.lastRecipients as string[]) {
           if (!merged.includes(email)) merged.push(email);
         }
         setRecipients(merged);
@@ -65,10 +68,10 @@ export default function SendPage() {
     return () => clearTimeout(debounceRef.current);
   }, [recipientQuery, recipients]);
 
-  function getCategoryName(categoryId: string | null) {
+  const getCategoryName = useCallback((categoryId: string | null) => {
     if (!categoryId) return null;
     return categories.find((c) => c.id === categoryId)?.name || null;
-  }
+  }, [categories]);
 
   function addRecipients(input: string) {
     const emails = input.split(/[,;]\s*/).map((e) => e.trim()).filter((e) => e.length > 0);
@@ -143,8 +146,7 @@ export default function SendPage() {
       map.set(key, list);
     }
     return map;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, categories]);
+  }, [draft, getCategoryName]);
 
   if (!draft) return null;
 

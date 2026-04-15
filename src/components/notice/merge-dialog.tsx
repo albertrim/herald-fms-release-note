@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import type { NoticeItem } from "@/types";
 
@@ -16,16 +16,9 @@ export function MergeDialog({ open, items, onMerge, onClose }: MergeDialogProps)
   const [description, setDescription] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiUsed, setAiUsed] = useState(false);
+  const prevOpenRef = useRef(false);
 
-  // AI 요약을 자동으로 시도
-  useEffect(() => {
-    if (open && items.length >= 2) {
-      fetchAiMerge();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  async function fetchAiMerge() {
+  const fetchAiMerge = useCallback(async () => {
     setAiLoading(true);
     setAiUsed(false);
     try {
@@ -53,7 +46,15 @@ export function MergeDialog({ open, items, onMerge, onClose }: MergeDialogProps)
     } finally {
       setAiLoading(false);
     }
-  }
+  }, [items]);
+
+  // 다이얼로그가 닫힘→열림으로 전환될 때만 AI 요약 자동 실행
+  useEffect(() => {
+    if (open && !prevOpenRef.current && items.length >= 2) {
+      fetchAiMerge();
+    }
+    prevOpenRef.current = open;
+  }, [open, items, fetchAiMerge]);
 
   if (!open) return null;
 
