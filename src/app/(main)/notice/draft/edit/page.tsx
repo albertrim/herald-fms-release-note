@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -49,6 +49,33 @@ interface DraftCardProps {
   onUpdate: (id: string, updates: Partial<NoticeItem>) => void;
   editingId: string | null;
   onScreenshotClick: (id: string) => void;
+}
+
+function AutoResizeTextarea({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    // 내용 높이 + 공백 2줄(line-height ~20px * 2 = 40px)
+    el.style.height = `${el.scrollHeight + 40}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      className="w-full resize-none overflow-hidden rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  );
 }
 
 function DraftCard({
@@ -115,11 +142,9 @@ function DraftCard({
                 onChange={(e) => onUpdate(item.id, { title: e.target.value })}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-lg font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
-              <textarea
+              <AutoResizeTextarea
                 value={stripHtml(item.description)}
                 onChange={(e) => onUpdate(item.id, { description: e.target.value })}
-                rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
             </div>
           ) : (
