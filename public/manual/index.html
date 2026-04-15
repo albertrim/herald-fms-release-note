@@ -197,7 +197,8 @@
           <ul class="detail-list">
             <li class="detail-item"><span class="detail-num">1</span><span class="detail-text">'Google 계정으로 로그인' 버튼을 클릭합니다.</span></li>
             <li class="detail-item"><span class="detail-num">2</span><span class="detail-text">Google 계정 선택 화면에서 @fassto.com 계정을 선택합니다.</span></li>
-            <li class="detail-item"><span class="detail-num">3</span><span class="detail-text">로그인 성공 시 대시보드로 이동합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">3</span><span class="detail-text"><strong>최초 로그인 시</strong> Gmail 이메일 발송 권한 동의 화면이 표시됩니다. '허용'을 클릭하면 이후 재로그인 시에는 동의 화면이 나타나지 않습니다.</span></li>
+            <li class="detail-item"><span class="detail-num">4</span><span class="detail-text">로그인 성공 시 대시보드로 이동합니다.</span></li>
           </ul>
         </div>
       </section>
@@ -250,7 +251,7 @@
             <li class="detail-item"><span class="detail-num">1</span><span class="detail-text">드래그 핸들(좌측 아이콘)을 잡고 끌어서 항목 순서를 변경합니다.</span></li>
             <li class="detail-item"><span class="detail-num">2</span><span class="detail-text">연필 아이콘을 클릭하여 제목과 설명을 직접 수정합니다.</span></li>
             <li class="detail-item"><span class="detail-num">3</span><span class="detail-text">카테고리 드롭다운에서 '신규 기능', '기능 개선', '버그 수정' 등을 선택합니다.</span></li>
-            <li class="detail-item"><span class="detail-num">4</span><span class="detail-text">이미지 아이콘을 클릭하여 스크린샷을 첨부할 수 있습니다.</span></li>
+            <li class="detail-item"><span class="detail-num">4</span><span class="detail-text">이미지 아이콘을 클릭하여 스크린샷을 첨부할 수 있습니다. 항목당 최대 5개까지 첨부 가능하며, 이메일에서는 한 줄 썸네일로 표시됩니다.</span></li>
             <li class="detail-item"><span class="detail-num">5</span><span class="detail-text">체크박스로 여러 항목을 선택한 후 '선택 항목 병합' 버튼으로 합칠 수 있습니다.</span></li>
             <li class="detail-item"><span class="detail-num">6</span><span class="detail-text">편집이 완료되면 '이메일 발송 준비' 버튼을 클릭합니다.</span></li>
           </ul>
@@ -270,11 +271,21 @@
             <li class="detail-item"><span class="detail-num">1</span><span class="detail-text">이메일 제목을 확인하고 필요시 수정합니다.</span></li>
             <li class="detail-item"><span class="detail-num">2</span><span class="detail-text">수신자 이메일을 입력합니다. 이전 발송 이력의 수신자가 자동으로 채워집니다.</span></li>
             <li class="detail-item"><span class="detail-num">3</span><span class="detail-text">이메일 입력 시 자동완성이 지원됩니다. 콤마(,)로 여러 명을 구분할 수 있습니다.</span></li>
-            <li class="detail-item"><span class="detail-num">4</span><span class="detail-text">우측 미리보기에서 수신자에게 전달될 최종 모습을 확인합니다.</span></li>
+            <li class="detail-item"><span class="detail-num">4</span><span class="detail-text">우측 미리보기에서 수신자에게 전달될 최종 모습을 확인합니다. 첨부 이미지는 한 줄 썸네일 그리드로 표시됩니다.</span></li>
             <li class="detail-item"><span class="detail-num">5</span><span class="detail-text">Slack 연동 옵션을 체크하면 각 JIRA 티켓의 Slack 스레드에 배포 완료 댓글이 자동 작성됩니다.</span></li>
             <li class="detail-item"><span class="detail-num">6</span><span class="detail-text">'이메일 발송하기' 버튼을 클릭하여 발송합니다.</span></li>
           </ul>
         </div>
+      </section>
+
+      <!-- Step 5-1: Email with images -->
+      <section>
+        <div class="section-header">
+          <span class="section-num" style="background:linear-gradient(135deg,#2563eb,#10b981);">✦</span>
+          <h3>스크린샷이 포함된 공지 메일 예시</h3>
+        </div>
+        <p class="section-desc">초안 편집 화면에서 스크린샷을 첨부하면 수신자에게 아래와 같이 전달됩니다. 이미지는 항목당 최대 5개까지 <strong>한 줄 썸네일 그리드</strong>로 표시되며, 각 이미지를 클릭하면 원본 크기로 확인할 수 있습니다.</p>
+        <div class="screenshot"><img src="/manual/07-email-with-images.png" alt="스크린샷이 포함된 공지 메일 예시" /></div>
       </section>
 
       <!-- Step 6: History Detail -->
