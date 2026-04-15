@@ -89,11 +89,11 @@ export function EmailPreview({
                   </p>
                 )}
                 {item.screenshots.length > 0 && (
-                  <div className="mt-4 grid grid-cols-5 gap-2">
+                  <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(item.screenshots.length, 5)}, 1fr)` }}>
                     {item.screenshots.map((url, j) => (
-                      <div key={j} className="relative aspect-square overflow-hidden rounded-lg border border-gray-200">
+                      <a key={j} href={url} target="_blank" rel="noopener noreferrer" className="relative block aspect-video overflow-hidden rounded-lg border border-gray-200 hover:opacity-90 transition-opacity">
                         <Image src={url} alt="" fill className="object-cover" />
-                      </div>
+                      </a>
                     ))}
                   </div>
                 )}

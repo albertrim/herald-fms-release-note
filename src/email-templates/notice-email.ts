@@ -39,9 +39,19 @@ export function buildNoticeHtml({ title, senderName, items }: NoticeEmailProps):
 
       return categoryItems.map((item) => {
         const screenshotsHtml = item.screenshots.length > 0
-          ? `<div style="margin-top:16px;">${item.screenshots.map((url) =>
-              `<img src="${url}" alt="" style="max-width:100%;border-radius:8px;margin-top:6px;border:1px solid #e5e7eb;" />`
-            ).join("")}</div>`
+          ? `<div style="margin-top:16px;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  ${item.screenshots.map((url) =>
+                    `<td style="padding:0 4px 0 0;vertical-align:top;width:${Math.floor(100 / Math.min(item.screenshots.length, 5))}%;">
+                      <a href="${url}" target="_blank" rel="noopener noreferrer" style="display:block;">
+                        <img src="${url}" alt="" style="display:block;width:100%;height:80px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;" />
+                      </a>
+                    </td>`
+                  ).join("")}
+                </tr>
+              </table>
+            </div>`
           : "";
 
         const slackHtml = item.slackLink
