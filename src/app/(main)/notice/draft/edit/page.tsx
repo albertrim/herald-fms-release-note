@@ -64,8 +64,8 @@ function AutoResizeTextarea({
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    // 내용 높이 + 공백 2줄(line-height ~20px * 2 = 40px)
-    el.style.height = `${el.scrollHeight + 40}px`;
+    // 내용 높이 + 공백 1줄(line-height ~20px)
+    el.style.height = `${el.scrollHeight + 20}px`;
   }, [value]);
 
   return (
